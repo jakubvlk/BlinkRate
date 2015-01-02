@@ -38,10 +38,10 @@ EQUALS = =
 CMAKE_EDIT_COMMAND = /opt/local/bin/ccmake
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate"
+CMAKE_SOURCE_DIR = /Users/jakubvlk/MyShit/BlinkRate
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate"
+CMAKE_BINARY_DIR = /Users/jakubvlk/MyShit/BlinkRate
 
 # Include any dependencies generated for this target.
 include CMakeFiles/faceAndEyesDetection.dir/depend.make
@@ -54,17 +54,17 @@ include CMakeFiles/faceAndEyesDetection.dir/flags.make
 
 CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o: CMakeFiles/faceAndEyesDetection.dir/flags.make
 CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o: faceAndEyesDetection.cpp
-	$(CMAKE_COMMAND) -E cmake_progress_report "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/CMakeFiles" $(CMAKE_PROGRESS_1)
+	$(CMAKE_COMMAND) -E cmake_progress_report /Users/jakubvlk/MyShit/BlinkRate/CMakeFiles $(CMAKE_PROGRESS_1)
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Building CXX object CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o"
-	/usr/bin/c++   $(CXX_DEFINES) $(CXX_FLAGS) -o CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o -c "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/faceAndEyesDetection.cpp"
+	/usr/bin/c++   $(CXX_DEFINES) $(CXX_FLAGS) -o CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o -c /Users/jakubvlk/MyShit/BlinkRate/faceAndEyesDetection.cpp
 
 CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.i"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -E "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/faceAndEyesDetection.cpp" > CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.i
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -E /Users/jakubvlk/MyShit/BlinkRate/faceAndEyesDetection.cpp > CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.i
 
 CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.s"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -S "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/faceAndEyesDetection.cpp" -o CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.s
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_FLAGS) -S /Users/jakubvlk/MyShit/BlinkRate/faceAndEyesDetection.cpp -o CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.s
 
 CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o.requires:
 .PHONY : CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o.requires
@@ -133,6 +133,6 @@ CMakeFiles/faceAndEyesDetection.dir/clean:
 .PHONY : CMakeFiles/faceAndEyesDetection.dir/clean
 
 CMakeFiles/faceAndEyesDetection.dir/depend:
-	cd "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate" && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate" "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate" "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate" "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate" "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/CMakeFiles/faceAndEyesDetection.dir/DependInfo.cmake" --color=$(COLOR)
+	cd /Users/jakubvlk/MyShit/BlinkRate && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /Users/jakubvlk/MyShit/BlinkRate /Users/jakubvlk/MyShit/BlinkRate /Users/jakubvlk/MyShit/BlinkRate /Users/jakubvlk/MyShit/BlinkRate /Users/jakubvlk/MyShit/BlinkRate/CMakeFiles/faceAndEyesDetection.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/faceAndEyesDetection.dir/depend
 

@@ -6,13 +6,13 @@
 
 #IncludeRegexTransform: 
 
-/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/faceAndEyesDetection.cpp
+/Users/jakubvlk/MyShit/BlinkRate/faceAndEyesDetection.cpp
 opencv2/objdetect/objdetect.hpp
-/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/opencv2/objdetect/objdetect.hpp
+/Users/jakubvlk/MyShit/BlinkRate/opencv2/objdetect/objdetect.hpp
 opencv2/highgui/highgui.hpp
-/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/opencv2/highgui/highgui.hpp
+/Users/jakubvlk/MyShit/BlinkRate/opencv2/highgui/highgui.hpp
 opencv2/imgproc/imgproc.hpp
-/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/opencv2/imgproc/imgproc.hpp
+/Users/jakubvlk/MyShit/BlinkRate/opencv2/imgproc/imgproc.hpp
 iostream
 -
 stdio.h

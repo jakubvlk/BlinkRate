@@ -4,7 +4,7 @@ SET(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 SET(CMAKE_DEPENDS_CHECK_CXX
-  "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/faceAndEyesDetection.cpp" "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o"
+  "/Users/jakubvlk/MyShit/BlinkRate/faceAndEyesDetection.cpp" "/Users/jakubvlk/MyShit/BlinkRate/CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o"
   )
 SET(CMAKE_CXX_COMPILER_ID "Clang")
 

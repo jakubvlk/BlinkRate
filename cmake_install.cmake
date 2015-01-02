@@ -1,4 +1,4 @@
-# Install script for directory: /Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate
+# Install script for directory: /Users/jakubvlk/MyShit/BlinkRate
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -33,7 +33,7 @@ ELSE(CMAKE_INSTALL_COMPONENT)
   SET(CMAKE_INSTALL_MANIFEST "install_manifest.txt")
 ENDIF(CMAKE_INSTALL_COMPONENT)
 
-FILE(WRITE "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/${CMAKE_INSTALL_MANIFEST}" "")
+FILE(WRITE "/Users/jakubvlk/MyShit/BlinkRate/${CMAKE_INSTALL_MANIFEST}" "")
 FOREACH(file ${CMAKE_INSTALL_MANIFEST_FILES})
-  FILE(APPEND "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/${CMAKE_INSTALL_MANIFEST}" "${file}\n")
+  FILE(APPEND "/Users/jakubvlk/MyShit/BlinkRate/${CMAKE_INSTALL_MANIFEST}" "${file}\n")
 ENDFOREACH(file)

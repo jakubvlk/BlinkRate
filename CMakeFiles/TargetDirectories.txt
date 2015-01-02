@@ -1,1 +1,1 @@
-/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/CMakeFiles/faceAndEyesDetection.dir
+/Users/jakubvlk/MyShit/BlinkRate/CMakeFiles/faceAndEyesDetection.dir

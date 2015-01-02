@@ -42,10 +42,10 @@ EQUALS = =
 CMAKE_EDIT_COMMAND = /opt/local/bin/ccmake
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate"
+CMAKE_SOURCE_DIR = /Users/jakubvlk/MyShit/BlinkRate
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate"
+CMAKE_BINARY_DIR = /Users/jakubvlk/MyShit/BlinkRate
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -72,9 +72,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/CMakeFiles" "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/CMakeFiles/progress.marks"
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/jakubvlk/MyShit/BlinkRate/CMakeFiles /Users/jakubvlk/MyShit/BlinkRate/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start "/Users/jakubvlk/Dropbox/vs/ING biatch/BlinkRate/CMakeFiles" 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /Users/jakubvlk/MyShit/BlinkRate/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
