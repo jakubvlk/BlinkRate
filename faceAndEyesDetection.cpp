@@ -47,8 +47,8 @@ string window_name = "Capture - Face detection";
 RNG rng(12345);
 
 string file = "lena.png";
-bool useVideo = false, useCamera = false, stepFrame = false;
-Mat frame;
+bool useVideo = false, useCamera = false, stepFrame = false, showWindow = false;
+Mat frame, originalFrame;
 
 const int slider_max = 300;
 int slider;
@@ -78,6 +78,7 @@ int main( int argc, const char** argv )
 	else
 	{
 		frame = imread(file);
+		originalFrame = frame.clone();
 		detectAndDisplay(frame);
 		//irisDetection(frame, "iris");
 		
@@ -92,13 +93,12 @@ int main( int argc, const char** argv )
 			{
 				if (stepFrame)
 				{
-					char c;
-					cout << "Speak yourself: " << endl;
-					cin >> c;
-
-					if (c == 'n' || c == 'N')
+					int c = waitKey(10);
+					
+					if( (char)c == 'n' || (char)c == 'N' || showWindow)
 					{
 						frame = cvQueryFrame( capture );
+						originalFrame = frame.clone();
 				
 						//-- 3. Apply the classifier to the frame
 						if( !frame.empty() )
@@ -110,13 +110,15 @@ int main( int argc, const char** argv )
 							printf(" --(!) No captured frame -- Break!"); break;
 						}					
 
-						c = ' ';
+						c = -1;
+						showWindow = false;
 					}
 				}
 				// normalni stav
 				else
 				{
 					frame = cvQueryFrame( capture );
+					originalFrame = frame.clone();
 				
 					//-- 3. Apply the classifier to the frame
 					if( !frame.empty() )
@@ -175,6 +177,7 @@ int main( int argc, const char** argv )
         else if ((arg == "-s") || (arg == "--step"))
         {
         	stepFrame = true;
+        	showWindow = true;
         }
         else if ((arg == "-c") || (arg == "--camera"))
         {
@@ -375,6 +378,15 @@ void on_trackbar(int pos, void *)
 	cout << pos << endl;
 
 	param2HoughC = pos;
+
+	frame = originalFrame.clone();
+
+	// cout << &frame << ", " << &originalFrame << endl;
+
+	// imshow( "frame", frame );
+	// imshow( "orig frame", originalFrame );
+
+	detectAndDisplay(frame);
 }
 
 void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY )
