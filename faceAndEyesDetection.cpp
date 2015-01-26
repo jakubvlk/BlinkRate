@@ -33,9 +33,14 @@ void myPupilDetection( Mat eye, string windowName, int x, int y, int frameX, int
 
 void showWindowAtPosition( string imageName, Mat mat, int x, int y );
 bool isContainigNumber(int array[], int size, int number);
-void on_trackbar(int pos, void *);
 vector<Rect> pickEyes(vector<Rect> eyes, Mat face);
 Rect pickFace(vector<Rect> faces);
+
+//trackbars
+void onHCParame2Trackbar(int pos, void *);
+void onHCDpTrackbar(int pos, void *);
+void onHCMinDistanceTrackbar(int pos, void *);
+
 
 
 // default values
@@ -50,9 +55,18 @@ string file = "lena.png";
 bool useVideo = false, useCamera = false, stepFrame = false, showWindow = false;
 Mat frame, originalFrame;
 
-const int slider_max = 300;
-int slider;
-int param2HoughC;
+// sliders
+const int sliderHCParam2max = 300;
+int sliderHCParam2, HCParam2;
+
+const int sliderHCDpMax = 200;
+int sliderHCDp;
+double HCDp;
+
+const int sliderHCMinDistanceMax = 200;
+int sliderHCMinDistance;
+double HCMinDistance;
+
 
 int main( int argc, const char** argv )
 {
@@ -61,7 +75,10 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	slider = param2HoughC = 40;		//38
+	sliderHCParam2 = HCParam2 = 40;		//38
+	sliderHCDp = 20;	// deli se to 10...
+	HCDp = 2;
+	sliderHCMinDistance = HCMinDistance = 100;	// toto se odviji dost podle velikosti obrazku... (?)
 
    	loadCascades();
 
@@ -260,7 +277,9 @@ void detectAndDisplay( Mat frame )
     }
   	
   	imshow( window_name, frame );
-  	createTrackbar("omg", window_name, &slider, slider_max, on_trackbar);
+  	createTrackbar("HC param2", window_name, &sliderHCParam2, sliderHCParam2max, onHCParame2Trackbar);
+  	createTrackbar("HC dp", window_name, &sliderHCDp, sliderHCDpMax, onHCDpTrackbar);
+  	createTrackbar("HC min distance", window_name, &sliderHCMinDistance, sliderHCMinDistanceMax, onHCMinDistanceTrackbar);
 }
 
 
@@ -343,7 +362,7 @@ vector<Rect> pickEyes(vector<Rect> eyes, Mat face)
 
 				if (face.size().width != 0)
 				{
-					cout << "distance = " << distance / face.size().width << endl;
+					//cout << "distance = " << distance / face.size().width << endl;
 					if (distance / face.size().width < distancesTresh)
 					{
 						// smaze mensi ze 2 ocnich oblasti
@@ -373,20 +392,43 @@ vector<Rect> pickEyes(vector<Rect> eyes, Mat face)
 	}
 }
 
-void on_trackbar(int pos, void *)
+void refreshImage()
 {
-	cout << pos << endl;
-
-	param2HoughC = pos;
-
 	frame = originalFrame.clone();
-
-	// cout << &frame << ", " << &originalFrame << endl;
-
-	// imshow( "frame", frame );
-	// imshow( "orig frame", originalFrame );
-
 	detectAndDisplay(frame);
+}
+
+void onHCParame2Trackbar(int pos, void *)
+{
+	HCParam2 = pos;
+
+	cout << "HC param2 = " << HCParam2 << endl;
+
+	refreshImage();
+}
+
+void onHCDpTrackbar(int pos, void *)
+{
+	HCDp = pos / 10.;
+
+	if (HCDp <= 0)
+		HCDp = 1;
+
+	cout << "HC dp = " << HCDp << endl;
+
+	refreshImage();
+}
+
+void onHCMinDistanceTrackbar(int pos, void *)
+{
+	HCMinDistance = pos;
+
+	if (HCMinDistance <= 0)
+		HCMinDistance = 1;
+
+	cout << "HC Min Distance = " << HCMinDistance << endl;
+
+	refreshImage();
 }
 
 void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY )
@@ -410,7 +452,7 @@ void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX,
 	// polomery
 	int minRadius = cvRound(gaussienEye.size().width * 0.1);	
 	int maxRadius = cvRound(gaussienEye.size().width * 0.3);	//0.3
-	HoughCircles( gaussienEye, circles, CV_HOUGH_GRADIENT, 3, gaussienEye.rows / 8, high_thresh_val, param2HoughC, minRadius, maxRadius);
+	HoughCircles( gaussienEye, circles, CV_HOUGH_GRADIENT, HCDp, HCMinDistance, high_thresh_val, HCParam2, minRadius, maxRadius);	//eyeCanny.rows / 8
 	
 	cvtColor(gaussienEye, gaussienEye, CV_GRAY2BGR);
 	/// Draw the circles detected
@@ -457,7 +499,7 @@ void irisDetection( Mat eye, string windowName, int x, int y, int frameX, int fr
 	int maxRadius = cvRound(eyeCanny.size().width * 0.6);	//0.4
 	
 	/// Apply the Hough Transform to find the circles
-	HoughCircles( eyeCanny, circles, CV_HOUGH_GRADIENT, 2, eyeCanny.rows / 2, high_thresh_val, param2HoughC, minRadius, maxRadius);
+	HoughCircles( eyeCanny, circles, CV_HOUGH_GRADIENT, 2, eyeCanny.rows / 2, high_thresh_val, HCParam2, minRadius, maxRadius);
 	cout << "num of circles = " << circles.size() << endl;
 
 	/// Draw the circles detected
@@ -506,7 +548,7 @@ void irisAndPupilDetection ( Mat eye, string windowName, int x, int y, int frame
 
 	int minRadius = cvRound(eyeCanny.size().width * 0.1);
 	int maxRadius = cvRound(eyeCanny.size().width * 0.3);
-	HoughCircles( eyeCanny, circles, CV_HOUGH_GRADIENT, 2, eyeCanny.rows / 8, high_thresh_val, param2HoughC, minRadius, maxRadius);
+	HoughCircles( eyeCanny, circles, CV_HOUGH_GRADIENT, 2, eyeCanny.rows / 8, high_thresh_val, HCParam2, minRadius, maxRadius);
 	//cout << "num of circles = " << circles.size() << endl;
 
 	vector<Vec3f> pupils;
