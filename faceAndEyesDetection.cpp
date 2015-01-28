@@ -26,7 +26,7 @@ void showUsage( string name );
 void loadCascades();
 void detectAndDisplay( Mat frame );
 void irisDetection( Mat eye, string windowName, int x, int y, int frameX, int frameY);
-void betterIrisDetection( Mat eye, string windowName, int x, int y, int frameX, int frameY);
+void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY, vector<Vec6f> *eyes);
 void pupilCenterDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY);
 void irisAndPupilDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY );
 void pupilDetection( Mat src );
@@ -37,7 +37,9 @@ bool isContainigNumber(int array[], int size, int number);
 vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face);
 Rect pickFace(vector<Rect> faces);
 
-Rect pickCorrectEye(vector<Rect> eyes, Mat face);
+void pickCorrectIrises();
+
+void drawIrises();
 
 
 //trackbars
@@ -61,6 +63,9 @@ bool useVideo = false, useCamera = false, stepFrame = false, showWindow = false;
 Mat frame, originalFrame;
 
 // sliders
+const int sliderHCParam1max = 300;
+int sliderHCParam1, HCParam1;
+
 const int sliderHCParam2max = 300;
 int sliderHCParam2, HCParam2;
 
@@ -71,11 +76,9 @@ double HCDp;
 const int sliderHCMinDistanceMax = 200;
 int sliderHCMinDistance, HCMinDistance;
 
-// sliders
-const int sliderHCParam1max = 300;
-int sliderHCParam1, HCParam1;
-
-vector<Rect> allEyes;
+vector<Vec6f> allEyes;
+vector<Vec6f> eye1;
+vector<Vec6f> eye2;
 
 int main( int argc, const char** argv )
 {
@@ -84,11 +87,13 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	sliderHCParam2 = HCParam2 = 29;		//38
-	sliderHCParam1 = HCParam1 = 50;		
-	sliderHCDp = 20;	// deli se to 10...
-	HCDp = 2.5;
-	sliderHCMinDistance = HCMinDistance = 8;	// toto se odviji dost podle velikosti obrazku... (?)
+	sliderHCParam1 = HCParam1 = 96;		
+	sliderHCParam2 = HCParam2 = 30;		
+	
+	sliderHCDp = 30;	// deli se to 10...
+	HCDp = 3;
+	
+	sliderHCMinDistance = HCMinDistance = 5;	// 170
 
    	loadCascades();
 
@@ -249,6 +254,10 @@ void detectAndDisplay( Mat frame )
 {
 	vector<Rect> faces;
   	Mat frame_gray;
+  	allEyes.clear();
+  	eye1.clear();
+  	eye2.clear();
+
 
 	// convert from color to grayscale
 	cvtColor( frame, frame_gray, CV_BGR2GRAY );
@@ -285,11 +294,24 @@ void detectAndDisplay( Mat frame )
 			char numstr[21]; // enough to hold all numbers up to 64-bits
 			sprintf(numstr, "%d", static_cast<int>(j + 1));
 			string eyeName = "eye";
+
+			if (j == 0)
+			{
+				betterIrisDetection(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, &eye1);
+			}
+			else
+			{
+				betterIrisDetection(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, &eye2);
+			}			
 			
-			betterIrisDetection(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 			//pupilCenterDetection(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}	
+
+     	pickCorrectIrises();
+     	drawIrises();
     }
+
+
   	
   	imshow( window_name, frame );
 
@@ -375,7 +397,7 @@ vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 		{
 			if (i != j)
 			{
-				double distance = sqrt( pow(correctEyes[i].x - correctEyes[j].x, 2) + pow(correctEyes[i].y - correctEyes[j].y, 2) );
+				double distance = sqrt( pow(correctEyes[i].x - correctEyes[j].x, 2.) + pow(correctEyes[i].y - correctEyes[j].y, 2.) );
 
 				if (face.size().width != 0)
 				{
@@ -397,7 +419,9 @@ vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 		}
 	}
 
-	
+	// TMP - tvrde smazeni na 2 ocni oblasti
+	if (correctEyes.size() > 2)
+		correctEyes.erase(correctEyes.begin() + 2, correctEyes.begin() + correctEyes.size());  
 
 	if (correctEyes.size() > 0)
 	{
@@ -466,7 +490,7 @@ void onHCMinDistanceTrackbar(int pos, void *)
 	refreshImage();
 }
 
-void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY )
+void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY, vector<Vec6f> *eyes)
 {
 	vector<Vec3f> circles;
 	
@@ -489,22 +513,155 @@ void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX,
 	int maxRadius = cvRound(gaussienEye.size().width * 0.3);	//0.3
 	HoughCircles( gaussienEye, circles, CV_HOUGH_GRADIENT, HCDp, HCMinDistance, HCParam1, HCParam2, minRadius, maxRadius);	//eyeCanny.rows / 8, high_thresh_val
 	
-	cvtColor(gaussienEye, gaussienEye, CV_GRAY2BGR);
-	/// Draw the circles detected
+
+	/// Add cicles to allEyes
 	for( size_t i = 0; i < circles.size(); i++ )
 	{
-		Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-		int radius = cvRound(circles[i][2]);
+		float relativeXPosition = circles[i][0] / eye.size().width;
+		float relativeYPosition = circles[i][1] / eye.size().height;
+		//cout << "relativePosition: " << circles[i][0] << " / " << eye.size().width << " = " << relativeXPosition << endl;
 
-		// circle outline
-		circle( gaussienEye, center, radius, Scalar(0, 0, 255), 0, 8, 0 );
-		
-		Point frameCenter(cvRound(circles[i][0]) + frameX, cvRound(circles[i][1]) + frameY);
-		// circle outline
-		circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
+		eyes->push_back(Vec6f(circles[i][0] + frameX, circles[i][1] + frameY, circles[i][2], relativeXPosition , relativeYPosition, 1));	//x, y, radius, relativni pozice, "barva", nada
 	}
 
-	showWindowAtPosition( windowName, gaussienEye, x, y );
+	// cvtColor(gaussienEye, gaussienEye, CV_GRAY2BGR);
+	// /// Draw the circles detected
+	// for( size_t i = 0; i < circles.size(); i++ )
+	// {
+	// 	Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+	// 	int radius = cvRound(circles[i][2]);
+
+	// 	// circle outline
+	// 	circle( gaussienEye, center, radius, Scalar(0, 0, 255), 0, 8, 0 );
+		
+	// 	Point frameCenter(cvRound(circles[i][0]) + frameX, cvRound(circles[i][1]) + frameY);
+	// 	// circle outline
+	// 	circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
+	// }
+
+	// showWindowAtPosition( windowName, gaussienEye, x, y );
+}
+
+void drawIrises()
+{
+	for( size_t i = 0; i < eye1.size(); i++ )
+	{
+		int radius = cvRound(eye1[i][2]);
+
+		Point frameCenter( cvRound(eye1[i][0]), cvRound(eye1[i][1]) );
+		// circle outline
+		Scalar color = Scalar(0, 0, 255);
+
+		if (eye1[i][5] < 0)
+		{
+			color = Scalar(255, 0, 255);
+			circle( frame, frameCenter, radius, color, 3, 8, 0 );	
+		}
+
+		// circle( frame, frameCenter, radius, color, 3, 8, 0 );	
+	}
+
+	for( size_t i = 0; i < eye2.size(); i++ )
+	{
+		int radius = cvRound(eye2[i][2]);
+
+		Point frameCenter( cvRound(eye2[i][0]), cvRound(eye2[i][1]) );
+		// circle outline
+		Scalar color = Scalar(0, 0, 255);
+
+		if (eye2[i][5] < 0)
+		{
+			color = Scalar(255, 0, 255);
+			circle( frame, frameCenter, radius, color, 3, 8, 0 );	
+		}
+
+		// circle( frame, frameCenter, radius, color, 3, 8, 0 );	
+	}
+}
+
+void pickCorrectIrises()
+{
+	for (int i = 0; i < eye1.size(); ++i)
+	{
+		for (int j = 0; j < eye2.size(); ++j)
+		{
+			float tresh = 0.1;	// hodnota se muze lisiti o +/- tresh*100%
+
+			// if ( abs(eye1[i][1] - eye2[j][1]) < 5 && abs(eye1[i][2] == eye2[j][2]) < 10 )
+			// {
+			// 	eye1[i][5] = -1;
+			//  	eye2[j][5] = -1;				
+			// }
+
+			double minRadius = 10, maxRadius = 20;
+			cout << "Radius = " << eye1[i][2] << ", " << eye2[j][2] << endl;
+			//if ( minRadius < eye1[i][2] < maxRadius &&  minRadius < eye1[j][2] <maxRadius )
+			{
+				double yMax = 0, yMin = 0, yTresh = 0.9;
+				if (eye1[i][1] > eye1[j][1])
+				{
+					yMax = eye1[i][1];
+					yMin = eye1[j][1];
+				}
+				else
+				{
+					yMax = eye1[j][1];
+					yMin = eye1[i][1];
+				}
+
+				double radMax = 0, radMin = 0, radTresh = 0.9;
+				if (eye1[i][2] > eye1[j][2])
+				{
+					radMax = eye1[i][2];
+					radMin = eye1[j][2];
+				}
+				else
+				{
+					radMax = eye1[j][2];
+					radMin = eye1[i][2];
+				}
+
+				if ( (yMin / yMax) >= yTresh && (radMin / radMax) >= radTresh )
+				{
+					eye1[i][5] = -1;
+				  	eye2[j][5] = -1;	
+				}
+			}
+
+
+			// if ( (eye1[i][3] * (1 - tresh)) > eye2[j][3] > (eye1[i][3] * (1 + tresh)) && (eye1[i][4] * (1 - tresh)) > eye2[j][4] > (eye1[i][4] * (1 + tresh)) )
+			// {
+			// 	cout << "podobna relativni pozice" << endl;
+			// 	eye1[i][5] = -1;
+			// 	eye2[j][5] = -1;
+			// }
+
+			// if ( abs(eye1[i][1] - eye2[j][1]) < 5 )
+			// {
+			// 	eye1[i][5] = -1;
+			//  	eye2[j][5] = -1;
+			// 	cout << "podobna y souradnice" << endl;
+			// }
+
+			// if (allEyes[i][2] == allEyes[j][2])
+			// {
+			// 	//cout << "stejny polomer" << endl;
+			// 	// /allEyes[i][5] = -1;
+			// }
+
+			// if (allEyes[i][3] == allEyes[j][3])
+			// {
+			// 	//cout << "stejna relativni x pozice" << endl;
+			// 	//allEyes[i][5] = -1;
+			// }
+
+			// if (allEyes[i][4] == allEyes[j][4])
+			// {
+			// 	//cout << "stejna relativni y pozice" << endl;
+			// 	//allEyes[i][5] = -1;
+			// }				
+		}
+	}
 }
 
 void pupilCenterDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY)
