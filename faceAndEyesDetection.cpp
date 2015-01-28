@@ -27,17 +27,22 @@ void loadCascades();
 void detectAndDisplay( Mat frame );
 void irisDetection( Mat eye, string windowName, int x, int y, int frameX, int frameY);
 void betterIrisDetection( Mat eye, string windowName, int x, int y, int frameX, int frameY);
+void pupilCenterDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY);
 void irisAndPupilDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY );
 void pupilDetection( Mat src );
 void myPupilDetection( Mat eye, string windowName, int x, int y, int frameX, int frameY);
 
 void showWindowAtPosition( string imageName, Mat mat, int x, int y );
 bool isContainigNumber(int array[], int size, int number);
-vector<Rect> pickEyes(vector<Rect> eyes, Mat face);
+vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face);
 Rect pickFace(vector<Rect> faces);
 
+Rect pickCorrectEye(vector<Rect> eyes, Mat face);
+
+
 //trackbars
-void onHCParame2Trackbar(int pos, void *);
+void onHCParam1Trackbar(int pos, void *);
+void onHCParam2Trackbar(int pos, void *);
 void onHCDpTrackbar(int pos, void *);
 void onHCMinDistanceTrackbar(int pos, void *);
 
@@ -59,14 +64,18 @@ Mat frame, originalFrame;
 const int sliderHCParam2max = 300;
 int sliderHCParam2, HCParam2;
 
-const int sliderHCDpMax = 200;
+const int sliderHCDpMax = 200;	// deli se 10
 int sliderHCDp;
 double HCDp;
 
 const int sliderHCMinDistanceMax = 200;
-int sliderHCMinDistance;
-double HCMinDistance;
+int sliderHCMinDistance, HCMinDistance;
 
+// sliders
+const int sliderHCParam1max = 300;
+int sliderHCParam1, HCParam1;
+
+vector<Rect> allEyes;
 
 int main( int argc, const char** argv )
 {
@@ -75,10 +84,11 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	sliderHCParam2 = HCParam2 = 40;		//38
+	sliderHCParam2 = HCParam2 = 29;		//38
+	sliderHCParam1 = HCParam1 = 50;		
 	sliderHCDp = 20;	// deli se to 10...
-	HCDp = 2;
-	sliderHCMinDistance = HCMinDistance = 100;	// toto se odviji dost podle velikosti obrazku... (?)
+	HCDp = 2.5;
+	sliderHCMinDistance = HCMinDistance = 8;	// toto se odviji dost podle velikosti obrazku... (?)
 
    	loadCascades();
 
@@ -129,6 +139,10 @@ int main( int argc, const char** argv )
 
 						c = -1;
 						showWindow = false;
+					}
+					else if( (char)c == 'i' || (char)c == 'I' || showWindow)
+					{
+						cout << "HC param 1 = " << HCParam1 <<  "HC param 2 = " << HCParam2 << ", HC dp = " << HCDp << ", HC min distance = " << HCMinDistance << endl;
 					}
 				}
 				// normalni stav
@@ -260,7 +274,7 @@ void detectAndDisplay( Mat frame )
     	eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(30, 30) );
 
 
-    	eyes = pickEyes(eyes, faceROI);
+    	eyes = pickEyeRegions(eyes, faceROI);
 
     	for( size_t j = 0; j < eyes.size(); j++ )
      	{
@@ -273,11 +287,14 @@ void detectAndDisplay( Mat frame )
 			string eyeName = "eye";
 			
 			betterIrisDetection(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+			//pupilCenterDetection(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}	
     }
   	
   	imshow( window_name, frame );
-  	createTrackbar("HC param2", window_name, &sliderHCParam2, sliderHCParam2max, onHCParame2Trackbar);
+
+  	createTrackbar("HC param1", window_name, &sliderHCParam1, sliderHCParam1max, onHCParam1Trackbar);
+  	createTrackbar("HC param2", window_name, &sliderHCParam2, sliderHCParam2max, onHCParam2Trackbar);
   	createTrackbar("HC dp", window_name, &sliderHCDp, sliderHCDpMax, onHCDpTrackbar);
   	createTrackbar("HC min distance", window_name, &sliderHCMinDistance, sliderHCMinDistanceMax, onHCMinDistanceTrackbar);
 }
@@ -311,11 +328,11 @@ Rect pickFace(vector<Rect> faces)
 }
 
 // Podivat se/popremyslet jak vyfiltrovat false detected oci
-vector<Rect> pickEyes(vector<Rect> eyes, Mat face)
+vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 {
 	vector<Rect> correctEyes = eyes;
 
-	// prostor pro oci je urcite ve vrchni polovine obliceje...
+	// prostor pro oci je urcite ve vrchni polovine obliceje...  !!! toto by se dalo udelat i zmensenim oblasti obliceje o 1/2 -> lepsi vykon!!!
 	for (int i = 0; i < eyes.size(); ++i)
 	{
 		if (eyes[i].y > (face.size().height * 0.5 ))
@@ -394,15 +411,33 @@ vector<Rect> pickEyes(vector<Rect> eyes, Mat face)
 
 void refreshImage()
 {
-	frame = originalFrame.clone();
-	detectAndDisplay(frame);
+	//if (stepFrame)
+	{
+		frame = originalFrame.clone();
+		detectAndDisplay(frame);
+	}
 }
 
-void onHCParame2Trackbar(int pos, void *)
+void onHCParam1Trackbar(int pos, void *)
+{
+	HCParam1 = pos;
+
+	cout << "HC param1 = " << HCParam1 << endl;
+
+	if (HCParam1 < 1)
+		HCParam1 = 1;
+
+	refreshImage();
+}
+
+void onHCParam2Trackbar(int pos, void *)
 {
 	HCParam2 = pos;
 
 	cout << "HC param2 = " << HCParam2 << endl;
+
+	if (HCParam2 < 1)
+		HCParam2 = 1;
 
 	refreshImage();
 }
@@ -411,7 +446,7 @@ void onHCDpTrackbar(int pos, void *)
 {
 	HCDp = pos / 10.;
 
-	if (HCDp <= 0)
+	if (HCDp < 1)
 		HCDp = 1;
 
 	cout << "HC dp = " << HCDp << endl;
@@ -423,7 +458,7 @@ void onHCMinDistanceTrackbar(int pos, void *)
 {
 	HCMinDistance = pos;
 
-	if (HCMinDistance <= 0)
+	if (HCMinDistance < 1)
 		HCMinDistance = 1;
 
 	cout << "HC Min Distance = " << HCMinDistance << endl;
@@ -452,7 +487,7 @@ void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX,
 	// polomery
 	int minRadius = cvRound(gaussienEye.size().width * 0.1);	
 	int maxRadius = cvRound(gaussienEye.size().width * 0.3);	//0.3
-	HoughCircles( gaussienEye, circles, CV_HOUGH_GRADIENT, HCDp, HCMinDistance, high_thresh_val, HCParam2, minRadius, maxRadius);	//eyeCanny.rows / 8
+	HoughCircles( gaussienEye, circles, CV_HOUGH_GRADIENT, HCDp, HCMinDistance, HCParam1, HCParam2, minRadius, maxRadius);	//eyeCanny.rows / 8, high_thresh_val
 	
 	cvtColor(gaussienEye, gaussienEye, CV_GRAY2BGR);
 	/// Draw the circles detected
@@ -470,6 +505,26 @@ void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX,
 	}
 
 	showWindowAtPosition( windowName, gaussienEye, x, y );
+}
+
+void pupilCenterDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY)
+{
+	Mat binaryEye;
+	double otsu_thresh_val = threshold( eye, binaryEye, 40, 255, CV_THRESH_BINARY);
+
+	int erosion_type, erosion_elem = 2;
+
+
+	if( erosion_elem == 0 ){ erosion_type = MORPH_RECT; }
+	else if( erosion_elem == 1 ){ erosion_type = MORPH_CROSS; }
+	else if( erosion_elem == 2) { erosion_type = MORPH_ELLIPSE; }
+
+	int erosion_size = HCParam2;
+  	Mat element = getStructuringElement( erosion_type, Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point( erosion_size, erosion_size ) );
+
+	Mat dilatedEye;
+	dilate(binaryEye, dilatedEye, element, Point(-1, -1), 1);	//2
+
 }
 
 void irisDetection( Mat eye, string windowName, int x, int y, int frameX, int frameY)
