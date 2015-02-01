@@ -87,13 +87,13 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	sliderHCParam1 = HCParam1 = 96;		
+	sliderHCParam1 = HCParam1 = 35;		
 	sliderHCParam2 = HCParam2 = 30;		
 	
 	sliderHCDp = 30;	// deli se to 10...
 	HCDp = 3;
 	
-	sliderHCMinDistance = HCMinDistance = 5;	// 170
+	sliderHCMinDistance = HCMinDistance = 57;	// 170
 
    	loadCascades();
 
@@ -508,10 +508,13 @@ void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX,
 	double lower_thresh_val = otsu_thresh_val * 0.5;
 	//cout << "Computed tresholds = " << high_thresh_val << ", " << lower_thresh_val << endl;	//140,70
 
+	// Mat eyeCanny;
+	// Canny(gaussienEye, gaussienEye, lower_thresh_val, high_thresh_val);
+
 	// polomery
 	int minRadius = cvRound(gaussienEye.size().width * 0.1);	
 	int maxRadius = cvRound(gaussienEye.size().width * 0.3);	//0.3
-	HoughCircles( gaussienEye, circles, CV_HOUGH_GRADIENT, HCDp, HCMinDistance, HCParam1, HCParam2, minRadius, maxRadius);	//eyeCanny.rows / 8, high_thresh_val
+	HoughCircles( gaussienEye, circles, CV_HOUGH_GRADIENT, HCDp, HCMinDistance, high_thresh_val, HCParam2, minRadius, maxRadius);	//eyeCanny.rows / 8, high_thresh_val
 	
 
 	/// Add cicles to allEyes
@@ -555,10 +558,10 @@ void drawIrises()
 		if (eye1[i][5] < 0)
 		{
 			color = Scalar(255, 0, 255);
-			circle( frame, frameCenter, radius, color, 3, 8, 0 );	
+			//circle( frame, frameCenter, radius, color, 3, 8, 0 );	
 		}
 
-		// circle( frame, frameCenter, radius, color, 3, 8, 0 );	
+		circle( frame, frameCenter, radius, color, 3, 8, 0 );	
 	}
 
 	for( size_t i = 0; i < eye2.size(); i++ )
@@ -572,10 +575,10 @@ void drawIrises()
 		if (eye2[i][5] < 0)
 		{
 			color = Scalar(255, 0, 255);
-			circle( frame, frameCenter, radius, color, 3, 8, 0 );	
+			//circle( frame, frameCenter, radius, color, 3, 8, 0 );	
 		}
 
-		// circle( frame, frameCenter, radius, color, 3, 8, 0 );	
+		circle( frame, frameCenter, radius, color, 3, 8, 0 );	
 	}
 }
 
@@ -594,7 +597,7 @@ void pickCorrectIrises()
 			// }
 
 			double minRadius = 10, maxRadius = 20;
-			cout << "Radius = " << eye1[i][2] << ", " << eye2[j][2] << endl;
+			//cout << "Radius = " << eye1[i][2] << ", " << eye2[j][2] << endl;
 			//if ( minRadius < eye1[i][2] < maxRadius &&  minRadius < eye1[j][2] <maxRadius )
 			{
 				double yMax = 0, yMin = 0, yTresh = 0.9;
