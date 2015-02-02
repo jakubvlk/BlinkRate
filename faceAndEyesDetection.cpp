@@ -92,8 +92,8 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	sliderHCParam1 = HCParam1 = 35;		//26
-	sliderHCParam2 = HCParam2 = 30;		//21
+	sliderHCParam1 = HCParam1 = 2;		//26	//35
+	sliderHCParam2 = HCParam2 = 13;		//21	//30
 	
 	sliderHCDp = 30;	// deli se to 10...
 	HCDp = 3;
@@ -318,7 +318,7 @@ void detectAndDisplay( Mat frame )
 
      	pickCorrectIrises();
 
-     	drawIrises();
+     	//drawIrises();
      	drawEyesCentres();
     }
 
@@ -563,23 +563,24 @@ void setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int 
 {
 	Mat tmp, medianBlurMat;
 
-	medianBlur(eye, medianBlurMat, 21);
+	medianBlur(eye, medianBlurMat, HCParam2);
 
 	//pokusne orezani oboci
 	double eyeTrimHeight = medianBlurMat.size().height * 0.2;
 	tmp = medianBlurMat(Rect(0, eyeTrimHeight, medianBlurMat.size().width, medianBlurMat.size().height - (eyeTrimHeight)));
 	//tmp = medianBlurMat;
 
-	threshold( tmp, tmp, 26, 255, CV_THRESH_BINARY);
+	threshold( tmp, tmp, HCParam1, 255, CV_THRESH_BINARY);
 	
 	// Create a structuring element
     int erosion_size = 1;  
     Mat element = getStructuringElement(MORPH_RECT, Size(2 * erosion_size + 1, 2 * erosion_size + 1), Point(erosion_size, erosion_size) );
  
- 	//showWindowAtPosition( windowName, tmp, x, y );
+ 	
     // Apply erosion or dilation on the image
     dilate(tmp, tmp, element);
-
+	
+	showWindowAtPosition( windowName, tmp, x, y + 130 );
 
 	vector<vector<Point> > contours;
     Mat contourOutput = tmp.clone();
@@ -592,20 +593,20 @@ void setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int 
 	int cx = int(mu.m10 / mu.m00);
 	int cy = int(mu.m01 / mu.m00);
 
-	//cvtColor(tmp, tmp, CV_GRAY2BGR);
+	cvtColor(tmp, tmp, CV_GRAY2BGR);
 	//for( size_t i = 0; i < circles.size(); i++ )
 	{
-		// Point center(cx, cy);
-		// int radius = 3;
+		  Point center(cx, cy);
+		  int radius = 3;
 
-		// // circle outline
-		// circle( tmp, center, radius, Scalar(0, 0, 255), 3, 8, 0 );
+		// circle outline
+		circle( tmp, center, radius, Scalar(0, 0, 255), 3, 8, 0 );
 
 		Point frameCenter(cx + frameX, cy + frameY + eyeTrimHeight);
 		// circle outline
-		// circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
+		circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
 
-		eyesCentres.push_back(frameCenter);
+		// eyesCentres.push_back(frameCenter);
 	}
 
 	showWindowAtPosition( windowName + " final", tmp, x, y );
