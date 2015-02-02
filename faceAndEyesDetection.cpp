@@ -92,13 +92,13 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	sliderHCParam1 = HCParam1 = 2;		//26	//35
-	sliderHCParam2 = HCParam2 = 13;		//21	//30
+	sliderHCParam1 = HCParam1 = 18;		//26	//35
+	sliderHCParam2 = HCParam2 = 7;		//21	//30
 	
-	sliderHCDp = 30;	// deli se to 10...
-	HCDp = 3;
+	sliderHCDp = 2;	// deli se to 10...	// 30
+	HCDp = 2;	// 3
 	
-	sliderHCMinDistance = HCMinDistance = 57;	// 170
+	sliderHCMinDistance = HCMinDistance = 1;	// 170	//57
 
    	loadCascades();
 
@@ -302,7 +302,7 @@ void detectAndDisplay( Mat frame )
 			sprintf(numstr, "%d", static_cast<int>(j + 1));
 			string eyeName = "eye";
 
-			setEyesCentres(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+			setEyesCentres(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
 			if (j == 0)
 			{
@@ -318,7 +318,7 @@ void detectAndDisplay( Mat frame )
 
      	pickCorrectIrises();
 
-     	//drawIrises();
+     	drawIrises();
      	drawEyesCentres();
     }
 
@@ -482,7 +482,9 @@ void onHCParam2Trackbar(int pos, void *)
 
 void onHCDpTrackbar(int pos, void *)
 {
-	HCDp = pos / 10.;
+	//HCDp = pos / 10.;
+
+	HCDp = pos;
 
 	if (HCDp < 1)
 		HCDp = 1;
@@ -570,46 +572,100 @@ void setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int 
 	tmp = medianBlurMat(Rect(0, eyeTrimHeight, medianBlurMat.size().width, medianBlurMat.size().height - (eyeTrimHeight)));
 	//tmp = medianBlurMat;
 
-	threshold( tmp, tmp, HCParam1, 255, CV_THRESH_BINARY);
+	threshold( tmp, tmp, HCParam1, 255, CV_THRESH_BINARY_INV);
 	
-	// Create a structuring element
-    int erosion_size = 1;  
-    Mat element = getStructuringElement(MORPH_RECT, Size(2 * erosion_size + 1, 2 * erosion_size + 1), Point(erosion_size, erosion_size) );
- 
- 	
-    // Apply erosion or dilation on the image
-    dilate(tmp, tmp, element);
-	
-	showWindowAtPosition( windowName, tmp, x, y + 130 );
+	int erosion_size = HCMinDistance;  
+    Mat ErosElement = getStructuringElement(MORPH_RECT, Size(2 * erosion_size + 1, 2 * erosion_size + 1), Point(erosion_size, erosion_size) );
+    erode( tmp, tmp, ErosElement );
+    showWindowAtPosition( windowName + "_erode", tmp, x, y + 130);
+
+
+    // Create a structuring element
+    int dilate_size = HCDp;  
+    Mat element = getStructuringElement(MORPH_RECT, Size(2 * dilate_size + 1, 2 * dilate_size + 1), Point(dilate_size, dilate_size) );
+ 	// Apply erosion or dilation on the image
+ 	Mat dilatedMat = tmp.clone();
+    //dilate(tmp, dilatedMat, element, Point(-1, -1), 1, BORDER_CONSTANT);
+    //showWindowAtPosition( windowName + "_dilate", dilatedMat, x, y + 260);
+
 
 	vector<vector<Point> > contours;
-    Mat contourOutput = tmp.clone();
-    findContours( contourOutput, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE );
+    Mat threshold_output = dilatedMat.clone();
+	vector<Vec4i> hierarchy;
 
-	vector<Point> cnt = contours[0];
+    findContours( threshold_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+
+	/// Approximate contours to polygons + get bounding rects and circles
+	vector<vector<Point> > contours_poly( contours.size() );
+	vector<Rect> boundRect( contours.size() );
+	vector<Point2f>center( contours.size() );
+	vector<float>radius( contours.size() );
+
+	for( int i = 0; i < contours.size(); i++ )
+    { 
+    	approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
+       	boundRect[i] = boundingRect( Mat(contours_poly[i]) );
+       	minEnclosingCircle( (Mat)contours_poly[i], center[i], radius[i] );
+    }
+
+
+	/// Draw polygonal contour + bonding rects + circles
+	Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
+	for( int i = 0; i< contours.size(); i++ )
+    {
+	    Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+	    drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+	    //rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0 );
+	    //circle( drawing, center[i], (int)radius[i], color, 2, 8, 0 );
+
+	    // circle outline
+	    Point frameCenter(center[i].x + frameX, center[i].y + frameY + eyeTrimHeight);
+		circle( frame, frameCenter, 3, Scalar(0,0,255), 3, 8, 0 );	
+
+	    Point framePoint1(boundRect[i].tl().x + frameX, boundRect[i].tl().y + frameY + eyeTrimHeight);
+	    Point framePoint2(boundRect[i].br().x + frameX, boundRect[i].br().y + frameY + eyeTrimHeight);
+		rectangle( frame, framePoint1, framePoint2, Scalar(0,255,255), 2, 8, 0 );
+    }
+
+    for( int i = 0; i< contours.size(); i++ )
+    {
+    	for( int j = 0; j< contours.size(); j++ )
+    	{
+    		if (i != j)
+    		{
+    			Rect tmpRec = boundRect[i] & boundRect[j];
+    			
+    			cout << tmpRec.area() << endl;
+    		}
+    	}
+    }
+
+    showWindowAtPosition( windowName, drawing, x, y );
+
+	/*vector<Point> cnt = contours[0];
 	Moments mu;
 	mu = moments(cnt, true);
 
 	int cx = int(mu.m10 / mu.m00);
 	int cy = int(mu.m01 / mu.m00);
 
-	cvtColor(tmp, tmp, CV_GRAY2BGR);
+	//cvtColor(tmp, tmp, CV_GRAY2BGR);
 	//for( size_t i = 0; i < circles.size(); i++ )
 	{
-		  Point center(cx, cy);
-		  int radius = 3;
+		// Point center(cx, cy);
+		// int radius = 3;
 
-		// circle outline
-		circle( tmp, center, radius, Scalar(0, 0, 255), 3, 8, 0 );
+		// // circle outline
+		// circle( tmp, center, radius, Scalar(0, 0, 255), 3, 8, 0 );
 
 		Point frameCenter(cx + frameX, cy + frameY + eyeTrimHeight);
 		// circle outline
-		circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
+		// circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
 
-		// eyesCentres.push_back(frameCenter);
+		eyesCentres.push_back(frameCenter);
 	}
 
-	showWindowAtPosition( windowName + " final", tmp, x, y );
+	showWindowAtPosition( windowName + " final", tmp, x, y );*/
 	
 }
 
