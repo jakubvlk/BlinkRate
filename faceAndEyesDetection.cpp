@@ -92,11 +92,11 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	sliderHCParam1 = HCParam1 = 18;		//26	//35
-	sliderHCParam2 = HCParam2 = 7;		//21	//30
+	sliderHCParam1 = HCParam1 = 26;		//26	//35
+	sliderHCParam2 = HCParam2 = 19;		//21	//30
 	
-	sliderHCDp = 2;	// deli se to 10...	// 30
-	HCDp = 2;	// 3
+	sliderHCDp = 17;	// deli se to 10...	// 30
+	HCDp = 1.7;	// 3
 	
 	sliderHCMinDistance = HCMinDistance = 1;	// 170	//57
 
@@ -469,9 +469,6 @@ void onHCParam2Trackbar(int pos, void *)
 {
 	HCParam2 = pos;
 
-	if (HCParam2 % 2 == 0)
-		HCParam2++;
-
 	cout << "HC param2 = " << HCParam2 << endl;
 
 	if (HCParam2 < 1)
@@ -482,9 +479,7 @@ void onHCParam2Trackbar(int pos, void *)
 
 void onHCDpTrackbar(int pos, void *)
 {
-	//HCDp = pos / 10.;
-
-	HCDp = pos;
+	HCDp = pos / 10.;
 
 	if (HCDp < 1)
 		HCDp = 1;
@@ -565,32 +560,32 @@ void setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int 
 {
 	Mat tmp, medianBlurMat;
 
-	medianBlur(eye, medianBlurMat, HCParam2);
+	medianBlur(eye, medianBlurMat, 7);
 
 	//pokusne orezani oboci
 	double eyeTrimHeight = medianBlurMat.size().height * 0.2;
 	tmp = medianBlurMat(Rect(0, eyeTrimHeight, medianBlurMat.size().width, medianBlurMat.size().height - (eyeTrimHeight)));
 	//tmp = medianBlurMat;
 
-	threshold( tmp, tmp, HCParam1, 255, CV_THRESH_BINARY_INV);
+	threshold( tmp, tmp, 18, 255, CV_THRESH_BINARY_INV);
 	
-	int erosion_size = HCMinDistance;  
+	int erosion_size = 1;  
     Mat ErosElement = getStructuringElement(MORPH_RECT, Size(2 * erosion_size + 1, 2 * erosion_size + 1), Point(erosion_size, erosion_size) );
     erode( tmp, tmp, ErosElement );
     showWindowAtPosition( windowName + "_erode", tmp, x, y + 130);
 
-
+	/*
     // Create a structuring element
-    int dilate_size = HCDp;  
+    int dilate_size = 2;  
     Mat element = getStructuringElement(MORPH_RECT, Size(2 * dilate_size + 1, 2 * dilate_size + 1), Point(dilate_size, dilate_size) );
  	// Apply erosion or dilation on the image
  	Mat dilatedMat = tmp.clone();
     //dilate(tmp, dilatedMat, element, Point(-1, -1), 1, BORDER_CONSTANT);
     //showWindowAtPosition( windowName + "_dilate", dilatedMat, x, y + 260);
-
+    */
 
 	vector<vector<Point> > contours;
-    Mat threshold_output = dilatedMat.clone();
+    Mat threshold_output = tmp.clone();
 	vector<Vec4i> hierarchy;
 
     findContours( threshold_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
@@ -608,7 +603,13 @@ void setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int 
        	minEnclosingCircle( (Mat)contours_poly[i], center[i], radius[i] );
     }
 
+	for( int i = 0; i< contours.size(); i++ )
+    {
+    	Point frameCenter(center[i].x + frameX, center[i].y + frameY + eyeTrimHeight);
+		eyesCentres.push_back(frameCenter);
+    }
 
+    /*
 	/// Draw polygonal contour + bonding rects + circles
 	Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
 	for( int i = 0; i< contours.size(); i++ )
@@ -627,51 +628,14 @@ void setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int 
 		rectangle( frame, framePoint1, framePoint2, Scalar(0,255,255), 2, 8, 0 );
     }
 
-    for( int i = 0; i< contours.size(); i++ )
-    {
-    	for( int j = 0; j< contours.size(); j++ )
-    	{
-    		if (i != j)
-    		{
-    			Rect tmpRec = boundRect[i] & boundRect[j];
-    			
-    			cout << tmpRec.area() << endl;
-    		}
-    	}
-    }
 
     showWindowAtPosition( windowName, drawing, x, y );
-
-	/*vector<Point> cnt = contours[0];
-	Moments mu;
-	mu = moments(cnt, true);
-
-	int cx = int(mu.m10 / mu.m00);
-	int cy = int(mu.m01 / mu.m00);
-
-	//cvtColor(tmp, tmp, CV_GRAY2BGR);
-	//for( size_t i = 0; i < circles.size(); i++ )
-	{
-		// Point center(cx, cy);
-		// int radius = 3;
-
-		// // circle outline
-		// circle( tmp, center, radius, Scalar(0, 0, 255), 3, 8, 0 );
-
-		Point frameCenter(cx + frameX, cy + frameY + eyeTrimHeight);
-		// circle outline
-		// circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
-
-		eyesCentres.push_back(frameCenter);
-	}
-
-	showWindowAtPosition( windowName + " final", tmp, x, y );*/
-	
+    */
 }
 
 void drawIrises()
 {
-	bool drawOnlyCorrectIrises = true;
+	bool drawOnlyCorrectIrises = 0;
 
 	if (drawOnlyCorrectIrises)
 	{
