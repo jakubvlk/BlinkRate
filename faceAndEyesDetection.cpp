@@ -92,7 +92,7 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	sliderHCParam1 = HCParam1 = 26;		//26	//35
+	sliderHCParam1 = HCParam1 = 1;		//26	//35
 	sliderHCParam2 = HCParam2 = 19;		//21	//30
 	
 	sliderHCDp = 17;	// deli se to 10...	// 30
@@ -271,14 +271,17 @@ void detectAndDisplay( Mat frame )
 	
 	// contrast adjustment using the image's histogram
   	equalizeHist( frame_gray, frame_gray );
+ 	
+ 	// Ptr<CLAHE> clahe = createCLAHE();
+	// clahe->setClipLimit(HCParam1p);
+	// clahe->apply(frame_gray,frame_gray);
 	
   	//Detects objects (faces) of different sizes in the input image. The detected objects are returned as a list of rectangles.
   	face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(frame_gray.size().width / 6, frame_gray.size().height / 6) );
 
   	if (faces.size() > 0)
   	{
-  		// zavolat f-ci na spravny face. Nemusi to byt ve foru pak taaaaada
-	  	Rect face = pickFace(faces);
+  		Rect face = pickFace(faces);
 
     	Point center( face.x + face.width*0.5, face.y + face.height*0.5 );
     	rectangle( frame, Rect(face.x, face.y, face.width, face.height), Scalar( 255, 0, 255 ), 4, 8, 0 );
@@ -306,11 +309,11 @@ void detectAndDisplay( Mat frame )
 
 			if (j == 0)
 			{
-				betterIrisDetection(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, &eye1);
+				betterIrisDetection(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, &eye1);
 			}
 			else
 			{
-				betterIrisDetection(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, &eye2);
+				betterIrisDetection(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, &eye2);
 			}			
 			
 			//pupilCenterDetection(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
@@ -318,7 +321,7 @@ void detectAndDisplay( Mat frame )
 
      	pickCorrectIrises();
 
-     	drawIrises();
+     	//drawIrises();
      	drawEyesCentres();
     }
 
@@ -503,6 +506,8 @@ void onHCMinDistanceTrackbar(int pos, void *)
 
 void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY, vector<Vec6f> *eyes)
 {
+	showWindowAtPosition( windowName + "_normalized", eye, x, y );
+
 	vector<Vec3f> circles;
 	
 	Mat gaussienEye;
@@ -520,7 +525,8 @@ void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX,
 	//cout << "Computed tresholds = " << high_thresh_val << ", " << lower_thresh_val << endl;	//140,70
 
 	// Mat eyeCanny;
-	// Canny(gaussienEye, gaussienEye, lower_thresh_val, high_thresh_val);
+	//Canny(gaussienEye, gaussienEye, lower_thresh_val, high_thresh_val);
+	//showWindowAtPosition( windowName + "_canny", gaussienEye, x, y );
 
 	// polomery
 	int minRadius = cvRound(gaussienEye.size().width * 0.1);	
@@ -569,10 +575,12 @@ void setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int 
 
 	threshold( tmp, tmp, 18, 255, CV_THRESH_BINARY_INV);
 	
-	int erosion_size = 1;  
+	int erosion_size = 2;  
     Mat ErosElement = getStructuringElement(MORPH_RECT, Size(2 * erosion_size + 1, 2 * erosion_size + 1), Point(erosion_size, erosion_size) );
-    erode( tmp, tmp, ErosElement );
+    //erode( tmp, tmp, ErosElement );
+    morphologyEx(tmp, tmp, MORPH_OPEN, ErosElement);
     showWindowAtPosition( windowName + "_erode", tmp, x, y + 130);
+
 
 	/*
     // Create a structuring element
@@ -605,8 +613,11 @@ void setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int 
 
 	for( int i = 0; i< contours.size(); i++ )
     {
-    	Point frameCenter(center[i].x + frameX, center[i].y + frameY + eyeTrimHeight);
-		eyesCentres.push_back(frameCenter);
+    	if (boundRect[i].size().height > 4 && boundRect[i].size().width > 2)
+    	{
+	    	Point frameCenter(center[i].x + frameX, center[i].y + frameY + eyeTrimHeight);
+			eyesCentres.push_back(frameCenter);
+		}	
     }
 
     /*
