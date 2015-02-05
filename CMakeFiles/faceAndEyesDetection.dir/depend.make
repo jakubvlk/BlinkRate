@@ -13,4 +13,6 @@ CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o: /usr/local/inclu
 CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o: /usr/local/include/opencv2/imgproc/imgproc.hpp
 CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o: /usr/local/include/opencv2/imgproc/types_c.h
 CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o: /usr/local/include/opencv2/objdetect/objdetect.hpp
+CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o: /usr/local/include/opencv2/photo/photo.hpp
+CMakeFiles/faceAndEyesDetection.dir/faceAndEyesDetection.cpp.o: /usr/local/include/opencv2/photo/photo_c.h
 

@@ -13,6 +13,8 @@ opencv2/highgui/highgui.hpp
 /Users/jakubvlk/MyShit/BlinkRate/opencv2/highgui/highgui.hpp
 opencv2/imgproc/imgproc.hpp
 /Users/jakubvlk/MyShit/BlinkRate/opencv2/imgproc/imgproc.hpp
+opencv2/photo/photo.hpp
+/Users/jakubvlk/MyShit/BlinkRate/opencv2/photo/photo.hpp
 iostream
 -
 stdio.h
@@ -127,4 +129,16 @@ map
 -
 deque
 -
+
+/usr/local/include/opencv2/photo/photo.hpp
+opencv2/core/core.hpp
+/usr/local/include/opencv2/photo/opencv2/core/core.hpp
+opencv2/imgproc/imgproc.hpp
+/usr/local/include/opencv2/photo/opencv2/imgproc/imgproc.hpp
+opencv2/photo/photo_c.h
+/usr/local/include/opencv2/photo/opencv2/photo/photo_c.h
+
+/usr/local/include/opencv2/photo/photo_c.h
+opencv2/core/core_c.h
+/usr/local/include/opencv2/photo/opencv2/core/core_c.h
 

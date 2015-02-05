@@ -11,6 +11,8 @@ TODO: 1) Podivat se jak detekuji oci a a pokud nedetekuji kazde vzlast, tak udel
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/photo/photo.hpp"
+
 
 #include <iostream>
 #include <stdio.h>
@@ -45,6 +47,7 @@ void drawEyesCentres();
 
 Rect setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int frameY);
 void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int frameY, Point center);
+Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY);
 
 
 //trackbars
@@ -95,7 +98,7 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	sliderHCParam1 = HCParam1 = 1;		//26	//35
+	sliderHCParam1 = HCParam1 = 180;	//26	//35
 	sliderHCParam2 = HCParam2 = 19;		//21	//30
 	
 	sliderHCDp = 17;	// deli se to 10...	// 30
@@ -163,6 +166,10 @@ int main( int argc, const char** argv )
 
 						refreshImage();
 					}
+					// else if( (char)c == 'p' || (char)c == 'P' || showWindow)
+					// {
+					// 	stepFrame = false;
+					// }
 				}
 				// normalni stav
 				else
@@ -185,6 +192,10 @@ int main( int argc, const char** argv )
 				if( (char)c == 'c' || (char)c == 'C' )
 				{
 					break;
+				}
+				else if( (char)c == 'p' || (char)c == 'P' || showWindow)
+				{
+					stepFrame = !stepFrame;
 				}			
 			}
 		}
@@ -281,8 +292,8 @@ void detectAndDisplay( Mat frame )
 	// contrast adjustment using the image's histogram
   	equalizeHist( frame_gray, frame_gray );
  	
- 	// Ptr<CLAHE> clahe = createCLAHE();
-	// clahe->setClipLimit(HCParam1p);
+ 	//  Ptr<CLAHE> clahe = createCLAHE();
+	// clahe->setClipLimit(3);
 	// clahe->apply(frame_gray,frame_gray);
 	
   	//Detects objects (faces) of different sizes in the input image. The detected objects are returned as a list of rectangles.
@@ -313,6 +324,8 @@ void detectAndDisplay( Mat frame )
 			char numstr[21]; // enough to hold all numbers up to 64-bits
 			sprintf(numstr, "%d", static_cast<int>(j + 1));
 			string eyeName = "eye";
+
+			eyeMat = removeReflections(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
 			Rect smallEyeRect = setEyesCentres(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
@@ -717,11 +730,47 @@ Rect setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int 
     }
 }
 
+Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY)
+{
+	Mat gaussEye, binaryEye;
+
+	GaussianBlur( eye, gaussEye, Size(3,3), 0, 0, BORDER_DEFAULT );
+
+	Mat grad_x, grad_y;
+	Mat abs_grad_x, abs_grad_y, grad;
+	
+	int scale = 1;
+  	int delta = 0;
+  	int ddepth = CV_16S;
+
+	/// Gradient X
+	Sobel( gaussEye, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+	/// Gradient Y
+	Sobel( gaussEye, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+
+	convertScaleAbs( grad_x, abs_grad_x );
+	convertScaleAbs( grad_y, abs_grad_y );
+
+	addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
+
+	threshold(grad, binaryEye, HCParam1, 255, CV_THRESH_BINARY);
+
+	//	Mozna jeste pridat erozi???
+
+
+	Mat reparedEye;
+	inpaint(eye, binaryEye, reparedEye, 3, INPAINT_TELEA);
+
+	// Draw
+	// showWindowAtPosition( windowName + " - eye", eye, x, y + 260);
+	// showWindowAtPosition( windowName + " - bez odlesku", reparedEye, x, y + 390);
+	
+	return reparedEye;
+}
+
 void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int frameY, Point center)
 {
-	// Mat tmpE = eye.clone();
-	// resize(eye, tmpE, Size(2, 2));
-
+	
 	GaussianBlur( eye, eye, Size(3,3), 0, 0, BORDER_DEFAULT );
 
 	Mat grad_x, grad_y;
@@ -816,6 +865,7 @@ void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int fra
 
 	showWindowAtPosition( windowName + "_nova oblast + cicles", grad, x, y + 130  );
 }
+
 
 void drawIrises()
 {
