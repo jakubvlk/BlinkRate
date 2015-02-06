@@ -27,20 +27,12 @@ void showUsage( string name );
 
 void loadCascades();
 void detectAndDisplay( Mat frame );
-void irisDetection( Mat eye, string windowName, int x, int y, int frameX, int frameY);
-void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY, vector<Vec6f> *eyes);
-void pupilCenterDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY);
-void irisAndPupilDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY );
-void pupilDetection( Mat src );
-void myPupilDetection( Mat eye, string windowName, int x, int y, int frameX, int frameY);
 
 void showWindowAtPosition( string imageName, Mat mat, int x, int y );
 void refreshImage();
-bool isContainigNumber(int array[], int size, int number);
 vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face);
 Rect pickFace(vector<Rect> faces);
 
-void pickCorrectIrises();
 
 void drawIrises();
 void drawEyesCentres();
@@ -123,7 +115,6 @@ int main( int argc, const char** argv )
 		frame = imread(file);
 		originalFrame = frame.clone();
 		detectAndDisplay(frame);
-		//irisDetection(frame, "iris");
 		
 		waitKey(0);
 	}
@@ -166,10 +157,6 @@ int main( int argc, const char** argv )
 
 						refreshImage();
 					}
-					// else if( (char)c == 'p' || (char)c == 'P' || showWindow)
-					// {
-					// 	stepFrame = false;
-					// }
 				}
 				// normalni stav
 				else
@@ -199,9 +186,7 @@ int main( int argc, const char** argv )
 				}			
 			}
 		}
-}
-	
-	//pupilDetection();
+	}
 	
 	return 0;
  }
@@ -291,10 +276,6 @@ void detectAndDisplay( Mat frame )
 	
 	// contrast adjustment using the image's histogram
   	equalizeHist( frame_gray, frame_gray );
- 	
- 	//  Ptr<CLAHE> clahe = createCLAHE();
-	// clahe->setClipLimit(3);
-	// clahe->apply(frame_gray,frame_gray);
 	
   	//Detects objects (faces) of different sizes in the input image. The detected objects are returned as a list of rectangles.
   	face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(frame_gray.size().width / 6, frame_gray.size().height / 6) );
@@ -327,29 +308,10 @@ void detectAndDisplay( Mat frame )
 
 			eyeMat = removeReflections(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
-			// Rect smallEyeRect = setEyesCentres(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-
-			// Mat smallEyeMat = eyeMat(smallEyeRect);
-			// //Prozatimni hack na pozici ve framu
-			// int tmpX = eyeMat.size().width - smallEyeMat.size().width;
-			// int tmpY = eyeMat.size().height - smallEyeMat.size().height;
 			Point eyeCenter = setEyesCentres(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-			
-			/*if (j == 0)
-			{
-				betterIrisDetection(smallEyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x + tmpX*0.5, face.y + eyes[j].y + tmpY*0.5, &eye1);
-			}
-			else
-			{
-				betterIrisDetection(smallEyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x + tmpX*0.5, face.y + eyes[j].y + tmpY*0.5, &eye2);
-			}	*/		
-			
-			//pupilCenterDetection(eyeMat, eyeName + numstr, 520 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
 			myCircleHough(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
-     	}	
-
-     	//pickCorrectIrises();
+     	}
 
 		if (drawInFrame)
 		{
@@ -536,84 +498,6 @@ void onHCMinDistanceTrackbar(int pos, void *)
 	refreshImage();
 }
 
-void betterIrisDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY, vector<Vec6f> *eyes)
-{
-	//showWindowAtPosition( windowName + "_normalized", eye, x, y );
-
-	vector<Vec3f> circles;
-	
-	Mat gaussienEye;
-	GaussianBlur( eye, gaussienEye, Size(5, 5), 2, 2 );	//bilateralFilter ???
-
-	/*
-	// **** Sobel *****
-	Mat grad_x, grad_y;
-	Mat abs_grad_x, abs_grad_y, grad;
-	
-	int scale = 1;
-  	int delta = 0;
-  	int ddepth = CV_16S;
-
-	/// Gradient X
-	Sobel( gaussienEye, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
-	/// Gradient Y
-	Sobel( gaussienEye, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
-
-	convertScaleAbs( grad_x, abs_grad_x );
-	convertScaleAbs( grad_y, abs_grad_y );
-
-	addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
-
-	showWindowAtPosition( windowName + "sobel", grad, x, y );
-
-	// **** END Sobel *****
-	*/
-
-
-	Mat uselessMat;
-	double otsu_thresh_val = threshold( gaussienEye, uselessMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU );
-	double high_thresh_val  = otsu_thresh_val;
-	double lower_thresh_val = otsu_thresh_val * 0.5;
-	//cout << "Computed tresholds = " << high_thresh_val << ", " << lower_thresh_val << endl;	//140,70
-
-	// Mat eyeCanny;
-	//Canny(gaussienEye, gaussienEye, lower_thresh_val, high_thresh_val);
-	//showWindowAtPosition( windowName + "_canny", gaussienEye, x, y );
-
-	// polomery
-	int minRadius = cvRound(gaussienEye.size().width * 0.2);	
-	int maxRadius = cvRound(gaussienEye.size().width * 0.45);	//0.3
-	HoughCircles( gaussienEye, circles, CV_HOUGH_GRADIENT, HCDp, HCMinDistance, high_thresh_val, HCParam2, minRadius, maxRadius);	//eyeCanny.rows / 8, high_thresh_val
-	
-
-	/// Add cicles to allEyes
-	for( size_t i = 0; i < circles.size(); i++ )
-	{
-		float relativeXPosition = circles[i][0] / eye.size().width;
-		float relativeYPosition = circles[i][1] / eye.size().height;
-		//cout << "relativePosition: " << circles[i][0] << " / " << eye.size().width << " = " << relativeXPosition << endl;
-
-		eyes->push_back(Vec6f(circles[i][0] + frameX, circles[i][1] + frameY, circles[i][2], relativeXPosition , relativeYPosition, 1));	//x, y, radius, relativni pozice, "barva", nada
-	}
-
-	cvtColor(gaussienEye, gaussienEye, CV_GRAY2BGR);
-	/// Draw the circles detected
-	for( size_t i = 0; i < circles.size(); i++ )
-	{
-		Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-		int radius = cvRound(circles[i][2]);
-
-		// circle outline
-		circle( gaussienEye, center, radius, Scalar(0, 0, 255), 0, 8, 0 );
-		
-		//Point frameCenter(cvRound(circles[i][0]) + frameX, cvRound(circles[i][1]) + frameY);
-		// circle outline
-		//circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
-	}
-
-	 showWindowAtPosition( windowName, gaussienEye, x, y + 260);	
-}
-
 Point setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int frameY)
 {
 	Mat tmp, medianBlurMat;
@@ -622,28 +506,14 @@ Point setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int
 
 	//pokusne orezani oboci
 	double eyeTrimHeight = medianBlurMat.size().height * 0.2;
-	//double eyeTrimHeight = 0;
 	tmp = medianBlurMat(Rect(0, eyeTrimHeight, medianBlurMat.size().width, medianBlurMat.size().height - (eyeTrimHeight)));
-	//tmp = medianBlurMat;
-
+	
 	threshold( tmp, tmp, 8, 255, CV_THRESH_BINARY_INV);
 	
 	int erosion_size = 1;  // 2
     Mat ErosElement = getStructuringElement(MORPH_RECT, Size(2 * erosion_size + 1, 2 * erosion_size + 1), Point(erosion_size, erosion_size) );
     erode( tmp, tmp, ErosElement );
-    //morphologyEx(tmp, tmp, MORPH_OPEN, ErosElement);
-    //showWindowAtPosition( windowName + "_open", tmp, x, y + 260);
-
-
-	/*
-    // Create a structuring element
-    int dilate_size = 2;  
-    Mat element = getStructuringElement(MORPH_RECT, Size(2 * dilate_size + 1, 2 * dilate_size + 1), Point(dilate_size, dilate_size) );
- 	// Apply erosion or dilation on the image
- 	Mat dilatedMat = tmp.clone();
-    //dilate(tmp, dilatedMat, element, Point(-1, -1), 1, BORDER_CONSTANT);
-    //showWindowAtPosition( windowName + "_dilate", dilatedMat, x, y + 260);
-    */
+   
 
 	vector<vector<Point> > contours;
     Mat threshold_output = tmp.clone();
@@ -665,7 +535,6 @@ Point setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int
     }
 
     // Pokud najdeme vice kontur, tak nechame jen tu nejvetsi
-
     Point correctCenter = Point(eye.size().width * 0.5, eye.size().height * 0.5);
     if (contours.size() > 0)
     {
@@ -692,68 +561,6 @@ Point setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int
 		Point frameCenter(correctCenter.x + frameX, correctCenter.y + frameY + eyeTrimHeight);
 		eyesCentres.push_back(frameCenter);
 	}
-
-    /*
-	/// Draw polygonal contour + bonding rects + circles
-	Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
-	for( int i = 0; i< contours.size(); i++ )
-    {
-	    Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-	    drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
-	    //rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0 );
-	    //circle( drawing, center[i], (int)radius[i], color, 2, 8, 0 );
-
-	    // circle outline
-	    Point frameCenter(center[i].x + frameX, center[i].y + frameY + eyeTrimHeight);
-		circle( frame, frameCenter, 3, Scalar(0,0,255), 3, 8, 0 );	
-
-	    Point framePoint1(boundRect[i].tl().x + frameX, boundRect[i].tl().y + frameY + eyeTrimHeight);
-	    Point framePoint2(boundRect[i].br().x + frameX, boundRect[i].br().y + frameY + eyeTrimHeight);
-		rectangle( frame, framePoint1, framePoint2, Scalar(0,255,255), 2, 8, 0 );
-    }
-    
-
-
-    showWindowAtPosition( windowName, drawing, x, y );
-
-    showWindowAtPosition( windowName + " jen oko", eye, x, y + 130 );
-    */
-    
-	/*
-	// Vraceni mensi ocni oblasti
-	// cout << "size = " << boundRect.size() << endl;
-    if (boundRect.size() > 0)
-    {
-    	cvtColor(eye, eye, CV_GRAY2BGR);
-    	int width = eye.size().width * 0.75;
-    	//cout << "rozmery zmenseneho oka = " << eye.size().width << ", " << eye.size().height << endl;
-    	// cout << "souradnice noveho oka = " << center[0].x - (width * 0.5) << ", " << center[0].y - (width * 0.5) + eyeTrimHeight << endl;
-    	// cout << "center oka = " << center[0].x << ", " << center[0].y << endl;
-
-    	Rect newRectEye = Rect(center[0].x - width * 0.5, center[0].y - width * 0.5  + eyeTrimHeight, width, width);
-    	if (newRectEye.x < 0)
-    		newRectEye.x = 0;
-    	else if (newRectEye.x > eye.size().width)
-    		newRectEye.x = eye.size().width;
-
-    	if (newRectEye.y < 0)
-    		newRectEye.y = 0;
-    	else if (newRectEye.y > eye.size().height)
-    		newRectEye.y = eye.size().height;
-    	//cout << "rozmery zmenseneho oka = " << width << ", " << width << endl;
-
-
-    	rectangle( eye, newRectEye, Scalar(0,255,255), 2, 8, 0 );
-
-    	
-    	showWindowAtPosition( windowName + "_nova oblast", eye, x, y + 130 );
-    	//return Rect(0, 0, 0, 0);
-    	return newRectEye;
-    }
-    else
-    {
-    	return Rect(0, 0, 0, 0);
-    }*/
 
     return Point(correctCenter.x, correctCenter.y + eyeTrimHeight);
 }
@@ -801,6 +608,7 @@ void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int fra
 
 	GaussianBlur( eye, eye, Size(3,3), 0, 0, BORDER_DEFAULT );
 
+	// Gradient
 	Mat grad_x, grad_y;
 	Mat abs_grad_x, abs_grad_y, grad;
 	
@@ -818,7 +626,6 @@ void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int fra
 
 	addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
 
-	// My houdg with center
 
 	// polomery
 	int minRadius = 8, maxRadius = eye.size().width * 0.25	;
@@ -844,11 +651,6 @@ void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int fra
 		
 			gradients[i] += grad.at<uchar>(x,y);
 
-			// TMP
-			// Vec3b & color = frame.at<Vec3b>(y,x);
-			// color[0] = color[1] = 0;
-			// color[2] = 255;
-
 			stepsCount++;
 		}
 
@@ -860,8 +662,6 @@ void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int fra
 	double maxGradRad = 0;
 	for (int i = 0; i < gradientsCount; ++i)
 	{
-		//cout << "Grad = " << gradients[i] << endl;
-
 		if (gradients[i] > maxGrad)
 		{
 			maxGrad = gradients[i];
@@ -871,17 +671,17 @@ void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int fra
 
 	maxGradRad += minRadius;
 
-	cout << "max grad = " << maxGrad << " s rad = " << maxGradRad << endl;
+	//cout << "max grad = " << maxGrad << " s rad = " << maxGradRad << endl;
+	
+	// drawing
+	showWindowAtPosition( windowName + "_nova oblast", grad, x, y);	
+
 	cvtColor(grad, grad, CV_GRAY2BGR);
+
 	Scalar color = Scalar(0, 0, 255);
 	int lineLength = 10;
 	line(grad, Point(center.x - lineLength*0.5, center.y), Point(center.x + lineLength*0.5, center.y), color);
 	line(grad, Point(center.x, center.y - lineLength*0.5), Point(center.x, center.y + lineLength*0.5), color);
-
-	// drawing
-	showWindowAtPosition( windowName + "_nova oblast", grad, x, y);
-
-	
 
 	// min max radius circle
 	circle( grad, center, minRadius, CV_RGB(0, 0, 255));
@@ -903,56 +703,15 @@ void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int fra
 
 void drawIrises()
 {
-	bool drawOnlyCorrectIrises = 1;
-
-	if (drawOnlyCorrectIrises)
+	for( size_t i = 0; i < irises.size(); i++ )
 	{
-		for( size_t i = 0; i < irises.size(); i++ )
-		{
-			int radius = cvRound(irises[i][2]);
+		int radius = cvRound(irises[i][2]);
 
-			Point frameCenter( cvRound(irises[i][0]), cvRound(irises[i][1]) );
-			// circle outline
-			Scalar color = Scalar(255, 0, 255);
+		Point frameCenter( cvRound(irises[i][0]), cvRound(irises[i][1]) );
+		// circle outline
+		Scalar color = Scalar(255, 0, 255);
 
-			circle( frame, frameCenter, radius, color, 2);
-		}
-	}
-	else
-	{
-		for( size_t i = 0; i < eye1.size(); i++ )
-		{
-			int radius = cvRound(eye1[i][2]);
-
-			Point frameCenter( cvRound(eye1[i][0]), cvRound(eye1[i][1]) );
-			// circle outline
-			Scalar color = Scalar(0, 0, 255);
-
-			if (eye1[i][5] < 0)
-			{
-				color = Scalar(255, 0, 255);
-				//circle( frame, frameCenter, radius, color, 3, 8, 0 );	
-			}
-
-			circle( frame, frameCenter, radius, color, 3, 8, 0 );	
-		}
-
-		for( size_t i = 0; i < eye2.size(); i++ )
-		{
-			int radius = cvRound(eye2[i][2]);
-
-			Point frameCenter( cvRound(eye2[i][0]), cvRound(eye2[i][1]) );
-			// circle outline
-			Scalar color = Scalar(0, 0, 255);
-
-			if (eye2[i][5] < 0)
-			{
-				color = Scalar(255, 0, 255);
-				//circle( frame, frameCenter, radius, color, 3, 8, 0 );	
-			}
-
-			circle( frame, frameCenter, radius, color, 3, 8, 0 );	
-		}
+		circle( frame, frameCenter, radius, color, 2);
 	}
 }
 
@@ -971,410 +730,6 @@ void drawEyesCentres()
 		line(frame, Point(eyesCentres[i].x, eyesCentres[i].y - lineLength*0.5), Point(eyesCentres[i].x, eyesCentres[i].y + lineLength*0.5), color);
 	}
 }
-
-void pickCorrectIrises()
-{
-	int distanceTresh = 5;
-	for (int j = 0; j < eyesCentres.size(); ++j)
-	{
-		for (int i = 0; i < eye1.size(); ++i)
-		{	
-			double distance = sqrt( pow(eyesCentres[i].x - eye1[i][0], 2) + pow(eyesCentres[i].y - eye1[i][1], 2) );
-
-			if (distance < distanceTresh)
-			{
-				eye1[i][5] = -1;			 
-
-				irises.push_back(Vec3f(eye1[i][0], eye1[i][1], eye1[i][2]));	
-			}			
-		}
-
-		for (int i = 0; i < eye2.size(); ++i)
-		{	
-			double distance = sqrt( pow(eyesCentres[i].x - eye2[i][0], 2) + pow(eyesCentres[i].y - eye2[i][1], 2) );
-
-			if (distance < distanceTresh)
-			{
-				eye2[i][5] = -1;			 	
-
-				irises.push_back(Vec3f(eye2[i][0], eye2[i][1], eye2[i][2]));
-			}
-		}
-	}
-
-
-	/*for (int i = 0; i < eye1.size(); ++i)
-	{
-		for (int j = 0; j < eye2.size(); ++j)
-		{
-			float tresh = 0.1;	// hodnota se muze lisiti o +/- tresh*100%
-
-			// if ( abs(eye1[i][1] - eye2[j][1]) < 5 && abs(eye1[i][2] == eye2[j][2]) < 10 )
-			// {
-			// 	eye1[i][5] = -1;
-			//  	eye2[j][5] = -1;				
-			// }
-
-			double minRadius = 10, maxRadius = 20;
-			//cout << "Radius = " << eye1[i][2] << ", " << eye2[j][2] << endl;
-			//if ( minRadius < eye1[i][2] < maxRadius &&  minRadius < eye1[j][2] <maxRadius )
-			{
-				double yMax = 0, yMin = 0, yTresh = 0.9;
-				if (eye1[i][1] > eye1[j][1])
-				{
-					yMax = eye1[i][1];
-					yMin = eye1[j][1];
-				}
-				else
-				{
-					yMax = eye1[j][1];
-					yMin = eye1[i][1];
-				}
-
-				double radMax = 0, radMin = 0, radTresh = 0.9;
-				if (eye1[i][2] > eye1[j][2])
-				{
-					radMax = eye1[i][2];
-					radMin = eye1[j][2];
-				}
-				else
-				{
-					radMax = eye1[j][2];
-					radMin = eye1[i][2];
-				}
-
-				if ( (yMin / yMax) >= yTresh && (radMin / radMax) >= radTresh )
-				{
-					eye1[i][5] = -1;
-				  	eye2[j][5] = -1;	
-				}
-			}
-
-
-			// if ( (eye1[i][3] * (1 - tresh)) > eye2[j][3] > (eye1[i][3] * (1 + tresh)) && (eye1[i][4] * (1 - tresh)) > eye2[j][4] > (eye1[i][4] * (1 + tresh)) )
-			// {
-			// 	cout << "podobna relativni pozice" << endl;
-			// 	eye1[i][5] = -1;
-			// 	eye2[j][5] = -1;
-			// }
-
-			// if ( abs(eye1[i][1] - eye2[j][1]) < 5 )
-			// {
-			// 	eye1[i][5] = -1;
-			//  	eye2[j][5] = -1;
-			// 	cout << "podobna y souradnice" << endl;
-			// }
-
-			// if (allEyes[i][2] == allEyes[j][2])
-			// {
-			// 	//cout << "stejny polomer" << endl;
-			// 	// /allEyes[i][5] = -1;
-			// }
-
-			// if (allEyes[i][3] == allEyes[j][3])
-			// {
-			// 	//cout << "stejna relativni x pozice" << endl;
-			// 	//allEyes[i][5] = -1;
-			// }
-
-			// if (allEyes[i][4] == allEyes[j][4])
-			// {
-			// 	//cout << "stejna relativni y pozice" << endl;
-			// 	//allEyes[i][5] = -1;
-			// }				
-		}
-	}*/
-}
-
-void pupilCenterDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY)
-{
-	Mat binaryEye;
-	double otsu_thresh_val = threshold( eye, binaryEye, 40, 255, CV_THRESH_BINARY);
-
-	int erosion_type, erosion_elem = 2;
-
-
-	if( erosion_elem == 0 ){ erosion_type = MORPH_RECT; }
-	else if( erosion_elem == 1 ){ erosion_type = MORPH_CROSS; }
-	else if( erosion_elem == 2) { erosion_type = MORPH_ELLIPSE; }
-
-	int erosion_size = HCParam2;
-  	Mat element = getStructuringElement( erosion_type, Size( 2*erosion_size + 1, 2*erosion_size+1 ), Point( erosion_size, erosion_size ) );
-
-	Mat dilatedEye;
-	dilate(binaryEye, dilatedEye, element, Point(-1, -1), 1);	//2
-
-}
-
-void irisDetection( Mat eye, string windowName, int x, int y, int frameX, int frameY)
-{
-	vector<Vec3f> circles;
-
-	//cvSmooth( eye, eye, CV_GAUSSIAN, 9, 9 );
-	//cvtColor( eye, eye, CV_BGR2GRAY );
-	
-	Mat gaussienEye;
-	GaussianBlur( eye, gaussienEye, Size(5, 5), 2, 2 );	//bilateralFilter ???
-
-
-	Mat uselessMat;
-	double otsu_thresh_val = threshold( eye, uselessMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU );
-	double high_thresh_val  = otsu_thresh_val;
-	double lower_thresh_val = otsu_thresh_val * 0.5;
-	cout << "Computed tresholds = " << high_thresh_val << ", " << lower_thresh_val << endl;
-
-	Mat eyeCanny;
-	Canny(gaussienEye, eyeCanny, lower_thresh_val, high_thresh_val);
-	//eyeCanny = gaussienEye;
-
-	//showWindowAtPosition( windowName, eyeCanny, x, y );
-
-	int minRadius = cvRound(eyeCanny.size().width * 0.1);
-	int maxRadius = cvRound(eyeCanny.size().width * 0.6);	//0.4
-	
-	/// Apply the Hough Transform to find the circles
-	HoughCircles( eyeCanny, circles, CV_HOUGH_GRADIENT, 2, eyeCanny.rows / 2, high_thresh_val, HCParam2, minRadius, maxRadius);
-	cout << "num of circles = " << circles.size() << endl;
-
-	/// Draw the circles detected
-	for( size_t i = 0; i < circles.size(); i++ )
-	{
-		Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-		int radius = cvRound(circles[i][2]);
-
-		//circle( eye, center, 3, Scalar(0,255,0), -1, 8, 0 );
-		// circle outline
-		//circle( eye, center, radius, Scalar(0,0,255), 3, 8, 0 );
-		
-		Point frameCenter(cvRound(circles[i][0]) + frameX, cvRound(circles[i][1]) + frameY);
-		// circle center
-		//circle( frame, frameCenter, 3, Scalar(0,255,0), -1, 8, 0 );
-		// circle outline
-		circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
-	}
-
-	showWindowAtPosition( windowName, eyeCanny, x, y );
-}
-
-
-
-void irisAndPupilDetection ( Mat eye, string windowName, int x, int y, int frameX, int frameY )
-{
-	vector<Vec3f> circles;
-	
-	//cvSmooth( eye, eye, CV_GAUSSIAN, 9, 9 );
-	//cvtColor( eye, eye, CV_BGR2GRAY );
-
-	Mat gaussienEye;
-	GaussianBlur( eye, gaussienEye, Size(5, 5), 2, 2 );	//bilateralFilter ???
-
-	Mat uselessMat;
-	double otsu_thresh_val = threshold( eye, uselessMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU );
-	double high_thresh_val  = otsu_thresh_val;
-	double lower_thresh_val = otsu_thresh_val * 0.5;
-	//cout << "Computed tresholds = " << high_thresh_val << ", " << lower_thresh_val << endl;	//140,70
-
-	Mat eyeCanny;
-	Canny(gaussienEye, eyeCanny, lower_thresh_val, high_thresh_val);
-	//Canny(gaussienEye, eyeCanny, 50, 120);
-	//Canny(gaussienEye, eyeCanny, cannyLow, cannyHigh);
-	//showWindowAtPosition( windowName, eyeCanny, x, y );
-
-	int minRadius = cvRound(eyeCanny.size().width * 0.1);
-	int maxRadius = cvRound(eyeCanny.size().width * 0.3);
-	HoughCircles( eyeCanny, circles, CV_HOUGH_GRADIENT, 2, eyeCanny.rows / 8, high_thresh_val, HCParam2, minRadius, maxRadius);
-	//cout << "num of circles = " << circles.size() << endl;
-
-	vector<Vec3f> pupils;
-	HoughCircles( eyeCanny, pupils, CV_HOUGH_GRADIENT, 2, 1, 100, 300, 0, 0);
-	//cout << "num of small circles = " << pupils.size() << endl;
-
-	// hleda kruznice se stejnym stredem
-
-	vector<Vec3f> irisesAndPupils;
-	for( size_t i = 0; i < circles.size(); i++ )
-	{
-		Point center1(cvRound(circles[i][0]), cvRound(circles[i][1]));
-
-		for (int j = 0; j < pupils.size(); ++j)
-		{
-			Point center2(cvRound(pupils[j][0]), cvRound(pupils[j][1]));
-
-
-			double distance = sqrt(pow(circles[i][0] - pupils[j][0], 2) - pow(circles[i][1] - pupils[j][1], 2));
-			//cout << distance << endl;
-			if (center1 == center2)
-			{
-				cout << "stejne stredy maji kruznice " << i << " a " << j << endl;
-				irisesAndPupils.push_back(circles[i]);
-				irisesAndPupils.push_back(pupils[j]);
-			}
-		}
-	}
-
-
-	cvtColor(eyeCanny, eyeCanny, CV_GRAY2BGR);
-	/// Draw the circles detected
-	for( size_t i = 0; i < circles.size(); i++ )
-	{
-		Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-		int radius = cvRound(circles[i][2]);
-
-		//circle( eye, center, 3, Scalar(0,255,0), -1, 8, 0 );
-		// circle outline
-		circle( eyeCanny, center, radius, Scalar(0, 0, 255), 0, 8, 0 );
-		
-		Point frameCenter(cvRound(circles[i][0]) + frameX, cvRound(circles[i][1]) + frameY);
-		// circle center
-		//circle( frame, frameCenter, radius, Scalar(0,255,0), 3, 8, 0 );
-		// circle outline
-		circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
-	}
-
-	for( size_t i = 0; i < pupils.size(); i++ )
-	{
-		Point center(cvRound(pupils[i][0]), cvRound(pupils[i][1]));
-		int radius = cvRound(pupils[i][2]);
-
-		//circle( eye, center, 3, Scalar(0,255,0), -1, 8, 0 );
-		// circle outline
-		circle( eyeCanny, center, radius, Scalar(0, 255, 255), 0, 8, 0 );
-		
-		Point frameCenter(cvRound(pupils[i][0]) + frameX, cvRound(pupils[i][1]) + frameY);
-		// circle center
-		//circle( frame, frameCenter, radius, Scalar(0,255,0), 3, 8, 0 );
-		// circle outline
-		circle( frame, frameCenter, radius, Scalar(0,255,255), 3, 8, 0 );	
-	}
-
-	/*for( size_t i = 0; i < irisesAndPupils.size(); i++ )
-	{
-		Point center(cvRound(irisesAndPupils[i][0]), cvRound(irisesAndPupils[i][1]));
-		int radius = cvRound(irisesAndPupils[i][2]);
-
-		//circle( eye, center, 3, Scalar(0,255,0), -1, 8, 0 );
-		// circle outline
-		circle( eyeCanny, center, radius, Scalar(0, 0, 255), 0, 8, 0 );
-		
-		Point frameCenter(cvRound(irisesAndPupils[i][0]) + frameX, cvRound(irisesAndPupils[i][1]) + frameY);
-		// circle center
-		//circle( frame, frameCenter, radius, Scalar(0,255,0), 3, 8, 0 );
-		// circle outline
-		circle( frame, frameCenter, radius, Scalar(0,0,255), 1, 8, 0 );	
-	}*/
-
-	showWindowAtPosition( windowName, eyeCanny, x, y );
-}
-
-bool isContainigNumber(int array[], int size, int number)
-{
-	for (int i = 0; i < size; ++i)
-	{
-		if (array[i] == number)
-			return true;
-	}
-
-	return false;
-}
-
-void myPupilDetection( Mat eye, string windowName, int x, int y, int frameX, int frameY)
-{
-	vector<Vec3f> circles;
-	
-
-	/*Mat gaussienEye;
-	GaussianBlur( eye, gaussienEye, Size(5, 5), 2, 2 );	//bilateralFilter ???
-
-	//Mat sobel;
-	//Sobel(gaussienEye, sobel, gaussienEye.depth(), 1, 0, 3);
-	// showWindowAtPosition( windowName, sobel, x, y );
-
-
-	Mat uselessMat;
-	double otsu_thresh_val = threshold( eye, uselessMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU );
-	double high_thresh_val  = otsu_thresh_val;
-	double lower_thresh_val = otsu_thresh_val * 0.5;
-	cout << "Computed tresholds = " << high_thresh_val << ", " << lower_thresh_val << endl;	//140,70
-
-	Mat eyeCanny;
-	Canny(gaussienEye, eyeCanny, lower_thresh_val, high_thresh_val);
-	//Canny(gaussienEye, eyeCanny, 50, 120);
-	//Canny(gaussienEye, eyeCanny, cannyLow, cannyHigh);
-	//showWindowAtPosition( windowName, eyeCanny, x, y );
-
-	int minRadius = cvRound(eyeCanny.size().width * 0.1);
-	int maxRadius = cvRound(eyeCanny.size().width * 0.3);
-	HoughCircles( eyeCanny, circles, CV_HOUGH_GRADIENT, 2, eyeCanny.rows / 4, high_thresh_val, param2HoughC, minRadius, maxRadius);
-	cout << "num of circles = " << circles.size();
-
-	//vector<Vec3f> irises = getCorrectIrises(circles);
-
-	cvtColor(eyeCanny, eyeCanny, CV_GRAY2BGR);
-	/// Draw the circles detected
-	for( size_t i = 0; i < circles.size(); i++ )
-	{
-		Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-		int radius = cvRound(circles[i][2]);
-
-		//circle( eye, center, 3, Scalar(0,255,0), -1, 8, 0 );
-		// circle outline
-		circle( eyeCanny, center, radius, Scalar(0, 0, 255), 0, 8, 0 );
-		
-		Point frameCenter(cvRound(circles[i][0]) + frameX, cvRound(circles[i][1]) + frameY);
-		// circle center
-		//circle( frame, frameCenter, radius, Scalar(0,255,0), 3, 8, 0 );
-		// circle outline
-		circle( frame, frameCenter, radius, Scalar(0,0,255), 3, 8, 0 );	
-	}
-
-	showWindowAtPosition( windowName, uselessMat, x, y );*/
-}
-
-void pupilDetection( Mat src )
-{
-// Load image
-	//cv::Mat src = cv::imread("ja.jpg");
-	// if (src.empty())
-// 		return -1;
-
-	// Invert the source image and convert to grayscale
-	cv::Mat gray;
-	cv::cvtColor(~src, gray, CV_BGR2GRAY);
-	//cv::imshow("image1", gray);
-
-	// Convert to binary image by thresholding it
-	cv::threshold(gray, gray, 220, 255, cv::THRESH_BINARY);
-	//cv::imshow("image2", gray);
-
-	// Find all contours
-	std::vector<std::vector<cv::Point> > contours;
-	cv::findContours(gray.clone(), contours, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-
-	// Fill holes in each contour
-	cv::drawContours(gray, contours, -1, CV_RGB(255,255,255), -1);
-
-	for (int i = 0; i < contours.size(); i++)
-	{
-		double area = cv::contourArea(contours[i]);
-		cv::Rect rect = cv::boundingRect(contours[i]);
-		int radius = rect.width/2;
-
-		// If contour is big enough and has round shape
-		// Then it is the pupil
-		if (area >= 30 //&& 
-		    //std::abs(1 - ((double)rect.width / (double)rect.height)) <= 0.2 &&
-				//std::abs(1 - (area / (CV_PI * std::pow(radius, 2)))) <= 0.2
-			)	
-		{
-			cv::circle(src, cv::Point(rect.x + radius, rect.y + radius), radius, CV_RGB(255,0,0), 2);
-		}
-	}
-
-	cv::imshow("final image", src);
-	//cv::waitKey(0);
-}
-
-
 
 void showWindowAtPosition( string imageName, Mat mat, int x, int y )
 {
