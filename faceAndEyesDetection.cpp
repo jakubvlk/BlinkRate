@@ -38,7 +38,7 @@ void drawIrises();
 void drawEyesCentres();
 
 Point setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int frameY);
-void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int frameY, Point center);
+void myCircleHough(Mat eye, int kernel, string windowName, int x, int y, int frameX, int frameY, Point center);
 Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY);
 
 
@@ -310,7 +310,7 @@ void detectAndDisplay( Mat frame )
 
 			Point eyeCenter = setEyesCentres(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
-			myCircleHough(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+			myCircleHough(eyeMat, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
      	}
 
 		if (drawInFrame)
@@ -535,7 +535,7 @@ Point setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int
     }
 
     // Pokud najdeme vice kontur, tak nechame jen tu nejvetsi
-    Point correctCenter = Point(eye.size().width * 0.5, eye.size().height * 0.5);
+    Point correctCenter = Point(tmp.size().width * 0.5, tmp.size().height * 0.5);
     if (contours.size() > 0)
     {
 	    correctCenter = center[0];
@@ -603,7 +603,7 @@ Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int 
 	return reparedEye;
 }
 
-void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int frameY, Point center)
+void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
 {
 
 	GaussianBlur( eye, eye, Size(3,3), 0, 0, BORDER_DEFAULT );
@@ -631,50 +631,113 @@ void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int fra
 	int minRadius = 8, maxRadius = eye.size().width * 0.25	;
 
 	int gradientsCount = maxRadius - minRadius + 1;
-	double gradients[gradientsCount];
+	double gradients[kernel][kernel][gradientsCount];
 
-	for (int i = 0; i < gradientsCount; ++i)
+	// nulovani
+	for (int i = 0; i < kernel; ++i)
 	{
-		gradients[i] = 0;
+		for (int j = 0; j < kernel; ++j)
+		{
+			for (int k = 0; k < gradientsCount; ++k)
+			{
+				gradients[i][j][k] = 0;
+			}
+		}
 	}
+
+	int newKernel = (kernel - 1) * 0.5;
+	// hranice
+	int xMin = center.x - newKernel;
+	if (xMin < 0)
+		xMin = 0;
+	int xMax = center.x + newKernel;
+	if (xMax > eye.size().width)
+		xMax = eye.size().width;
+	int yMin = center.y - newKernel;
+	if (yMin < 0)
+		yMin = 0;
+	int yMax = center.y + newKernel;
+	if (yMax > eye.size().height)
+		yMax = eye.size().height;
+
+	// cout << "center = " << center.x << ", " << center.y << endl;
+	// cout << xMin << ", " << xMax << ", " << yMin << ", " << yMax << endl;
+    
+    if (kernel == 1)
+    {
+        xMin = yMin = 0;
+        xMax = yMax = 0;
+        
+    }
 
 	int i = 0;
-	for (int r = minRadius; r <= maxRadius; ++r)
-	{
-		double step = 2* M_PI / (r*2);
-
-		int stepsCount = 0;
-		for(double theta = 0;  theta < 2 * M_PI;  theta += step)
+	int totalStepsCount = 0;
+	for (int x = xMin; x <= xMax; ++x)
+	{		
+		int j = 0;
+		for (int y = yMin; y <= yMax; ++y)
 		{
-			int x = lround(center.x + r * cos(theta));
-			int y = lround(center.y - r * sin(theta));
-		
-			gradients[i] += grad.at<uchar>(x,y);
+			int k = 0;
+			for (int r = minRadius; r <= maxRadius; ++r)
+			{
+				double step = 2* M_PI / (r*2);
 
-			stepsCount++;
+				int stepsCount = 0;
+				for(double theta = 0;  theta < 2 * M_PI;  theta += step)
+				{
+					int circleX = lround(x + r * cos(theta));
+					int circleY = lround(y - r * sin(theta));
+				
+					gradients[i][j][k] += grad.at<uchar>(circleX, circleY);
+
+					stepsCount++;
+				}
+
+				totalStepsCount += stepsCount;
+
+				gradients[i][j][k] /= stepsCount;
+				k++;
+			}
+
+			j++;
 		}
 
-		gradients[i] /= stepsCount;
 		i++;
 	}
+	
 
 	double maxGrad = 0;
 	double maxGradRad = 0;
-	for (int i = 0; i < gradientsCount; ++i)
-	{
-		if (gradients[i] > maxGrad)
+	Point newCenter = center;
+
+	i = 0;
+	for (int x = xMin; x <= xMax; ++x)
+	{		
+		int j = 0;
+		for (int y = yMin; y < yMax; ++y)
 		{
-			maxGrad = gradients[i];
-			maxGradRad = i;
+			for (int k = 0; k < gradientsCount; ++k)
+			{		
+				if (gradients[i][j][k] > maxGrad)
+				{
+					maxGrad = gradients[i][j][k];
+					maxGradRad = k;
+
+					newCenter.x = x;
+					newCenter.y = y;
+				}
+			}
 		}
 	}
+
+	
 
 	maxGradRad += minRadius;
 
 	//cout << "max grad = " << maxGrad << " s rad = " << maxGradRad << endl;
 	
 	// drawing
-	showWindowAtPosition( windowName + "_nova oblast", grad, x, y);	
+	//showWindowAtPosition( windowName + "_nova oblast", grad, windowX, windowY);
 
 	cvtColor(grad, grad, CV_GRAY2BGR);
 
@@ -692,12 +755,12 @@ void myCircleHough(Mat eye, string windowName, int x, int y, int frameX, int fra
 	irises.push_back(Vec3f(center.x + frameX, center.y + frameY, maxGradRad));
 
 
-	showWindowAtPosition( windowName + "_nova oblast + cicles", grad, x, y + 130  );
+	//showWindowAtPosition( windowName + "_nova oblast + cicles", grad, windowX, windowY + 130 );
 
 
 	cvtColor(eye, eye, CV_GRAY2BGR);
 	circle(eye, center, maxGradRad, color);
-	showWindowAtPosition( windowName + "_nova oblast + eye", eye, x, y + 260  );
+	//showWindowAtPosition( windowName + "_nova oblast + eye", eye, windowX, windowY + 260  );
 }
 
 
@@ -719,8 +782,6 @@ void drawEyesCentres()
 {
 	for( size_t i = 0; i < eyesCentres.size(); i++ )
 	{
-		int radius = 3;
-
 		// circle outline
 		Scalar color = Scalar(0, 0, 255);
 
