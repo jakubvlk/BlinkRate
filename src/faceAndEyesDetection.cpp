@@ -51,8 +51,8 @@ void onHCMinDistanceTrackbar(int pos, void *);
 
 
 // default values
-String face_cascade_name = "haarcascade_frontalface_alt.xml";
-String eyes_cascade_name = "haarcascade_eye_tree_eyeglasses.xml";
+String face_cascade_name = "../res/haarcascade_frontalface_alt.xml";
+String eyes_cascade_name = "../res/haarcascade_eye_tree_eyeglasses.xml";
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 string window_name = "Capture - Face detection";
