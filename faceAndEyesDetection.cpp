@@ -340,6 +340,7 @@ Rect pickFace(vector<Rect> faces)
 
 	for (int i = 0; i < faces.size(); ++i)
 	{
+        //int faceSize =
 		int volume = faces[i].size().width * faces[i].size().height;
 		if (volume > max)
 		{
@@ -405,12 +406,12 @@ vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 		{
 			if (i != j)
 			{
-				double distance = sqrt( pow(correctEyes[i].x - correctEyes[j].x, 2.) + pow(correctEyes[i].y - correctEyes[j].y, 2.) );
+				double distance = /*sqrt*/( pow(correctEyes[i].x - correctEyes[j].x, 2.) + pow(correctEyes[i].y - correctEyes[j].y, 2.) );
 
 				if (face.size().width != 0)
 				{
 					//cout << "distance = " << distance / face.size().width << endl;
-					if (distance / face.size().width < distancesTresh)
+					if (distance / pow( face.size().width, 2.) < distancesTresh)
 					{
 						// smaze mensi ze 2 ocnich oblasti
 						if (correctEyes[i].width > correctEyes[j].width)
@@ -523,19 +524,19 @@ Point setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int
 
 	/// Approximate contours to polygons + get bounding rects and circles
 	vector<vector<Point> > contours_poly( contours.size() );
-	vector<Rect> boundRect( contours.size() );
+	//vector<Rect> boundRect( contours.size() );
 	vector<Point2f>center( contours.size() );
 	vector<float>radius( contours.size() );
 
 	for( int i = 0; i < contours.size(); i++ )
     { 
     	approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
-       	boundRect[i] = boundingRect( Mat(contours_poly[i]) );
+       	//boundRect[i] = boundingRect( Mat(contours_poly[i]) );
        	minEnclosingCircle( (Mat)contours_poly[i], center[i], radius[i] );
     }
 
-    // Pokud najdeme vice kontur, tak nechame jen tu nejvetsi
     Point correctCenter = Point(tmp.size().width * 0.5, tmp.size().height * 0.5);
+    // Pokud najdeme vice kontur, tak nechame jen tu nejvetsi
     if (contours.size() > 0)
     {
 	    correctCenter = center[0];
