@@ -1,2 +1,3 @@
 build/*
-res/*
+res/videos*
+res/pics*
