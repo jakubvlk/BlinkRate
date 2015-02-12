@@ -1,3 +1,4 @@
 build/*
+buildXcode/*
 res/videos*
 res/pics*

@@ -37,10 +37,12 @@ Rect pickFace(vector<Rect> faces);
 void drawIrises();
 void drawEyesCentres();
 
-Point setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int frameY);
+Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 void myCircleHough(Mat eye, int kernel, string windowName, int x, int y, int frameX, int frameY, Point center);
 Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY);
 
+void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
+void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 
 //trackbars
 void onHCParam1Trackbar(int pos, void *);
@@ -51,8 +53,11 @@ void onHCMinDistanceTrackbar(int pos, void *);
 
 
 // default values
-String face_cascade_name = "../res/haarcascade_frontalface_alt.xml";
-String eyes_cascade_name = "../res/haarcascade_eye_tree_eyeglasses.xml";
+String face_cascade_name = "../../../res/haarcascade_frontalface_alt.xml";
+String eyes_cascade_name = "../../../res/haarcascade_eye_tree_eyeglasses.xml";
+//String face_cascade_name = "../res/haarcascade_frontalface_alt.xml";
+//String eyes_cascade_name = "../res/haarcascade_eye_tree_eyeglasses.xml";
+
 CascadeClassifier face_cascade;
 CascadeClassifier eyes_cascade;
 string window_name = "Capture - Face detection";
@@ -78,9 +83,6 @@ const int sliderHCMinDistanceMax = 200;
 int sliderHCMinDistance, HCMinDistance;
 
 vector<Point> eyesCentres;
-vector<Vec6f> allEyes;
-vector<Vec6f> eye1;
-vector<Vec6f> eye2;
 vector<Vec3f> irises;
 
 int main( int argc, const char** argv )
@@ -90,8 +92,8 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	sliderHCParam1 = HCParam1 = 18;	//26	//35
-	sliderHCParam2 = HCParam2 = 19;		//21	//30
+	sliderHCParam1 = HCParam1 = 14;	//26	//35
+	sliderHCParam2 = HCParam2 = 91;		//21	//30
 	
 	sliderHCDp = 17;	// deli se to 10...	// 30
 	HCDp = 1.7;	// 3
@@ -264,9 +266,6 @@ void detectAndDisplay( Mat frame )
 {
 	vector<Rect> faces;
   	Mat frame_gray;
-  	allEyes.clear();
-  	eye1.clear();
-  	eye2.clear();
   	eyesCentres.clear();
   	irises.clear();
 
@@ -310,7 +309,9 @@ void detectAndDisplay( Mat frame )
 
 			Point eyeCenter = setEyesCentres(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
-			myCircleHough(eyeMat, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+			// myCircleHough(eyeMat, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+			//FCD(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            findPupil(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}
 
 		if (drawInFrame)
@@ -320,8 +321,8 @@ void detectAndDisplay( Mat frame )
 	    }
     }
 
+    //FCD(frame_gray, 3, "", 820 + 220 , 0, 0, 0);
 
-  	
   	imshow( window_name, frame );
 
   	createTrackbar("HC param1", window_name, &sliderHCParam1, sliderHCParam1max, onHCParam1Trackbar);
@@ -499,7 +500,7 @@ void onHCMinDistanceTrackbar(int pos, void *)
 	refreshImage();
 }
 
-Point setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int frameY)
+Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
 {
 	Mat tmp, medianBlurMat;
 
@@ -509,7 +510,8 @@ Point setEyesCentres ( Mat eye, string windowName, int x, int y, int frameX, int
 	double eyeTrimHeight = medianBlurMat.size().height * 0.2;
 	tmp = medianBlurMat(Rect(0, eyeTrimHeight, medianBlurMat.size().width, medianBlurMat.size().height - (eyeTrimHeight)));
 	
-	threshold( tmp, tmp, 8, 255, CV_THRESH_BINARY_INV);
+	threshold( tmp, tmp, HCParam1, 255, CV_THRESH_BINARY_INV);  // 8
+    showWindowAtPosition( windowName + " tresh", tmp, windowX, windowY + 130);
 	
 	int erosion_size = 1;  // 2
     Mat ErosElement = getStructuringElement(MORPH_RECT, Size(2 * erosion_size + 1, 2 * erosion_size + 1), Point(erosion_size, erosion_size) );
@@ -589,7 +591,7 @@ Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int 
 
 	addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
 
-	threshold(grad, binaryEye, 180, 255, CV_THRESH_BINARY);
+	threshold(grad, binaryEye, HCParam2, 255, CV_THRESH_BINARY);    //180
 
 	//	Mozna jeste pridat erozi???
 
@@ -602,6 +604,279 @@ Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int 
 	// showWindowAtPosition( windowName + " - bez odlesku", reparedEye, x, y + 390);
 	
 	return reparedEye;
+}
+
+Mat mat2gray(const cv::Mat& src)
+{
+    Mat dst;
+    normalize(src, dst, 0.0, 255.0, cv::NORM_MINMAX, CV_8U);
+
+    return dst;
+}
+
+Mat orientationMap(const cv::Mat& mag, const cv::Mat& ori, double thresh = 1.0)
+{
+    Mat oriMap = Mat::zeros(ori.size(), CV_8UC3);
+    Vec3b red(0, 0, 255);
+    Vec3b cyan(255, 255, 0);
+    Vec3b green(0, 255, 0);
+    Vec3b yellow(0, 255, 255);
+    for(int i = 0; i < mag.rows*mag.cols; i++)
+    {
+        float* magPixel = reinterpret_cast<float*>(mag.data + i*sizeof(float));
+        if(*magPixel > thresh)
+        {
+            float* oriPixel = reinterpret_cast<float*>(ori.data + i*sizeof(float));
+            Vec3b* mapPixel = reinterpret_cast<Vec3b*>(oriMap.data + i*3*sizeof(char));
+            if(*oriPixel < 90.0)
+                *mapPixel = red;
+            else if(*oriPixel >= 90.0 && *oriPixel < 180.0)
+                *mapPixel = cyan;
+            else if(*oriPixel >= 180.0 && *oriPixel < 270.0)
+                *mapPixel = green;
+            else if(*oriPixel >= 270.0 && *oriPixel < 360.0)
+                *mapPixel = yellow;
+        }
+    }
+
+    return oriMap;
+}
+
+void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
+{
+	GaussianBlur( eye, eye, Size(3,3), 0, 0, BORDER_DEFAULT );
+
+	// Gradient
+	Mat grad_x, grad_y;
+	Mat abs_grad_x, abs_grad_y, grad;
+	
+	int scale = 1;
+  	int delta = 0;
+  	int ddepth = CV_32F;
+
+	/// Gradient X
+	Sobel( eye, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+	/// Gradient Y
+	Sobel( eye, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+
+	convertScaleAbs( grad_x, abs_grad_x );
+	convertScaleAbs( grad_y, abs_grad_y );
+
+	addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
+
+
+    Mat direction, acceptedDirectionPares;
+    
+    acceptedDirectionPares = grad.clone();
+    // Obarveni na cerno - to by asi slo udelat lip - napr. vytvorit Mat se stejnymi rozmery jako grad, ale rovnou cerny, nebo tak neco...
+    for (int i = 0; i < acceptedDirectionPares.cols; i++)
+    {
+        for (int j = 0; j < acceptedDirectionPares.rows; j++)
+        {
+            acceptedDirectionPares.at<uchar>(i, j) = 0;
+        }
+    }
+
+    phase(grad_x, grad_y, direction, true);
+    
+    double m_pi180 = M_PI / 180;
+    double _180m_pi = 180 / M_PI;
+    
+    vector<Vec4f> pairVectors;
+    
+    for (int i = 0; i < direction.cols; i++)
+    {
+        for (int j = 0; j < direction.rows; j++)
+        {
+            for (int k = i; k < direction.cols; k++)
+            {
+                for (int l = j + 1; l <= direction.rows; l++)
+                {
+//            for (int k = 0; k < direction.cols; k++)
+//            {
+//                for (int l = 0; l < direction.rows; l++)
+//                {
+                    // Pokud nemaji nulovou velikost gradientu
+                    if (grad.at<uchar>(i, j) != 0 && grad.at<uchar>(k, l) != 0)
+                    {
+                        int opositeAngleTresh = 4;
+                        // musi mit cca opacny uhel
+                        if( abs( direction.at<float>(i, j) - direction.at<float>(k, l) ) > ( 180 - opositeAngleTresh) &&
+                           abs( direction.at<float>(i, j) - direction.at<float>(k, l) ) < ( 180 + opositeAngleTresh) )
+                        {
+                            float rad1 = direction.at<float>(i, j) * m_pi180;
+                            Vec2f directionVec1 = Vec2f( cos(rad1), sin(rad1));
+                            
+//                            float rad2 = direction.at<float>(k, l) * m_pi180;
+//                            Vec2f directionVec2 = Vec2f( cos(rad2), sin(rad2));
+//                            
+//                            Vec2f p1p2 = directionVec1 - directionVec2;
+//                            
+//                            float angle = acos( ( directionVec1[0] * p1p2[0] + directionVec1[1] * p1p2[0] ) / (sqrt(pow(directionVec1[0], 2) + pow(directionVec1[1], 2))) * (sqrt(pow(p1p2[0], 2) + pow(p1p2[1], 2))) );
+                            
+                            
+                            // ***************************************
+                            // pixely - alternative 2
+//                            Point p1p2_B = Point(l - j,k - i);
+                            Point p1p2_B = Point(j - l,i - k);
+                            
+                            float magnitude = sqrt(pow(p1p2_B.x, 2) + pow(p1p2_B.y, 2));
+                            Point2f p1p2Normalized_B = Point2f( p1p2_B.x / magnitude, p1p2_B.y / magnitude );
+                            
+                            Point2f v1 = Point2f(directionVec1[0], directionVec1[1]);
+                            
+                            float angle_B = acos( v1.dot(p1p2Normalized_B) / (sqrt ( pow(v1.x, 2) + pow(v1.y, 2)) * sqrt(pow(p1p2Normalized_B.x, 2) + pow(p1p2Normalized_B.y, 2))) ) * _180m_pi;
+                            
+                            //cout << "angle = " << angle_B << endl;
+                            
+                            // Uhel mezi p1p2 a v1 kolem 0
+                            int angleTresh = 4;  // 4
+                            if (abs(angle_B) < angleTresh)
+                            {
+                                pairVectors.push_back(Vec4f(j, i, l, k));
+                                
+                                // debug obarveni
+                                //acceptedDirectionPares.at<uchar>(i, j) = 255;
+                                //acceptedDirectionPares.at<uchar>(k, l) = 255;
+//                                acceptedDirectionPares.at<uchar>(l, k) = grad.at<uchar>(l, k);
+//                                acceptedDirectionPares.at<uchar>(j, i) = grad.at<uchar>(j, i);
+                            }
+                        }
+                        
+                        //acceptedDirectionPares.at<uchar>(k, l) = grad.at<uchar>(k, l);
+                    }
+                }
+            }
+        }
+    }
+    
+    // *********************** TMP **************************
+    //25,11 ; 46,36
+//    acceptedDirectionPares.at<uchar>(36, 46) = 255;
+//    acceptedDirectionPares.at<uchar>(11, 25) = 255;
+    //pairVectors.clear();
+    //pairVectors.push_back(Vec4f(25, 11, 46, 36));
+    
+    vector<Vec4f> pairVectorsWithRadius;
+    int minRad = 5, maxRad = 15;
+    
+    for (int i = 0; i < pairVectors.size(); i++)
+    {
+        Vec2f vec = Vec2f(pairVectors[i][0] - pairVectors[i][2], pairVectors[i][1] - pairVectors[i][3]);
+        
+        float mag = sqrt(pow(vec[0], 2) + pow(vec[1], 2));
+        
+        if (mag > minRad*2 && mag < maxRad*2)
+        {
+            pairVectorsWithRadius.push_back(Vec4f(pairVectors[i][0], pairVectors[i][1], pairVectors[i][2], pairVectors[i][3]));
+        }
+    }
+    
+    // TODO: zmensit pole jenom na pouzite radiusy. Ted je tam zbytecne 0 az minRadius-1
+    int accumulator[grad.cols][grad.rows][maxRad];
+    for (int i = 0; i < grad.cols; ++i)
+    {
+        for (int j = 0; j < grad.rows; ++j)
+        {
+            for (int k = 0; k < maxRad; ++k)
+            {
+                accumulator[i][j][k] = 0;
+            }
+        }
+    }
+    
+    for (int i = 0; i < pairVectorsWithRadius.size(); ++i)
+    {
+        // *********************** TMP **************************
+        //25,11 ; 46,36
+        //acceptedDirectionPares.at<uchar>(pairVectorsWithRadius[i][1], pairVectorsWithRadius[i][0]) = 255;
+        //acceptedDirectionPares.at<uchar>(pairVectorsWithRadius[i][3], pairVectorsWithRadius[i][2]) = 255;
+        
+        Vec2f vec = Vec2f(abs(pairVectorsWithRadius[i][0] - pairVectorsWithRadius[i][2]), abs(pairVectorsWithRadius[i][1] - pairVectorsWithRadius[i][3]));   // abs??
+        //acceptedDirectionPares.at<uchar>(vec[1], vec[0]) = 255;
+        
+        float mag = sqrt(pow(vec[0], 2) + pow(vec[1], 2));
+        Vec2i center = Vec2i(lround(vec[0] * 0.5), lround(vec[1] * 0.5));
+        center += Vec2i(pairVectorsWithRadius[i][0], pairVectorsWithRadius[i][1]);
+        if (center[0] >= grad.cols)
+            center[0] = grad.cols -1;
+        if (center[1] >= grad.rows)
+            center[1] = grad.rows -1;
+        
+        accumulator[center[0]][center[1]][lround(mag * 0.5)]++;
+        //acceptedDirectionPares.at<uchar>(center[1], center[0]) = 255;
+    }
+    
+//    for (int i = 0; i < grad.cols; ++i)
+//    {
+//        for (int j = 0; j < grad.rows; ++j)
+//        {
+//            for (int k = minRad; k < maxRad; ++k)
+//            {
+//                if (accumulator[i][j][k] != 0)
+//                    cout << i << ", " << j << ", " << k << " = " << accumulator[i][j][k] << endl;
+//            }
+//        }
+//    }
+    
+    Vec3i bestCircle;
+    int max = 0;
+    for (int i = 0; i < grad.cols; ++i)
+    {
+        for (int j = 0; j < grad.rows; ++j)
+        {
+            for (int k = minRad; k < maxRad; ++k)
+            {
+                if (accumulator[i][j][k] > max)
+                {
+                    max = accumulator[i][j][k];
+                    bestCircle = Vec3i(i, j, k);
+                }
+            }
+            
+            //circle(frame, Point(bestCircle[0], bestCircle[1]), bestCircle[2], CV_RGB(0, 0, 255));
+        }
+    }
+    cout << "best cirlce is " << bestCircle << " with max = " << max << endl;
+    circle(frame, Point(bestCircle[0] + frameX, bestCircle[1] + frameY), bestCircle[2], CV_RGB(255, 0, 0));
+    
+    // zobrazeni akumulatoru
+    Mat accMat = grad.clone();
+    for (int i = 0; i < accMat.cols; ++i)
+    {
+        max = 0;
+        for (int j = 0; j < accMat.rows; ++j)
+        {
+            for (int k = minRad; k < maxRad; ++k)
+            {
+                if (accumulator[i][j][k] > max)
+                {
+                    max = accumulator[i][j][k];
+                    bestCircle = Vec3i(i, j, k);
+                }
+            }
+            
+            accMat.at<uchar>(j, i) = max;
+        }
+    }
+    
+    
+
+//	showWindowAtPosition( windowName + "grad", grad, windowX, windowY);
+//    showWindowAtPosition( windowName + "_direction", mat2gray(direction), windowX, windowY + 130);
+//    showWindowAtPosition( windowName + "_accepted dir", acceptedDirectionPares, windowX, windowY + 260);
+//    showWindowAtPosition( windowName + "_acc", accMat, windowX, windowY + 390);
+    
+}
+
+void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
+{
+    Mat tresholdedEye;
+    
+    //threshold( eye, tresholdedEye, HCParam1, 255, CV_THRESH_BINARY);
+    
+    showWindowAtPosition( windowName + " eye", eye, windowX, windowY);
+    //showWindowAtPosition( windowName + " tresh", tresholdedEye, windowX, windowY + 130);
 }
 
 void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
