@@ -93,7 +93,7 @@ int main( int argc, const char** argv )
 	// Mat frame;
 
 	sliderHCParam1 = HCParam1 = 14;	//26	//35
-	sliderHCParam2 = HCParam2 = 91;		//21	//30
+	sliderHCParam2 = HCParam2 = 14;		//21	//30
 	
 	sliderHCDp = 17;	// deli se to 10...	// 30
 	HCDp = 1.7;	// 3
@@ -297,9 +297,16 @@ void detectAndDisplay( Mat frame )
 
     	for( size_t j = 0; j < eyes.size(); j++ )
      	{
-     		rectangle( frame, Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height), Scalar( 0, 0, 255 ), 4, 8, 0 );
+     		//rectangle( frame, Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height), Scalar( 0, 0, 255 ), 4, 8, 0 );
+            
+            // Pokus - Zkouska, jestli equalize na ocni oblast, zlepsi kvalitu rozpoznani
+            Mat newFaceROI = frame(Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height));
+            // convert from color to grayscale
+            cvtColor( newFaceROI, newFaceROI, CV_BGR2GRAY );
+            // contrast adjustment using the image's histogram
+            equalizeHist( newFaceROI, newFaceROI );
 
-       		Mat eyeMat = faceROI(Rect(eyes[j].x, eyes[j].y, eyes[j].width, eyes[j].height));
+            Mat eyeMat = newFaceROI;//faceROI(Rect(eyes[j].x, eyes[j].y, eyes[j].width, eyes[j].height));
 
 			char numstr[21]; // enough to hold all numbers up to 64-bits
 			sprintf(numstr, "%d", static_cast<int>(j + 1));
@@ -309,19 +316,21 @@ void detectAndDisplay( Mat frame )
 
 			Point eyeCenter = setEyesCentres(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
-			// myCircleHough(eyeMat, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+			myCircleHough(eyeMat, 1, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
 			//FCD(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-            findPupil(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            //findPupil(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}
 
 		if (drawInFrame)
 		{
-	     	drawIrises();
 	     	drawEyesCentres();
+            drawIrises();
 	    }
     }
 
-    //FCD(frame_gray, 3, "", 820 + 220 , 0, 0, 0);
+    //FCD(frame_gray, "", 820 + 220 , 0, 0, 0);
+    //findPupil(frame_gray, "", 820 + 220 , 0, 0, 0);
+
 
   	imshow( window_name, frame );
 
@@ -502,6 +511,8 @@ void onHCMinDistanceTrackbar(int pos, void *)
 
 Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
 {
+    //showWindowAtPosition( windowName + " eye centres", eye, windowX, windowY);
+    
 	Mat tmp, medianBlurMat;
 
 	medianBlur(eye, medianBlurMat, 7);
@@ -510,13 +521,12 @@ Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int
 	double eyeTrimHeight = medianBlurMat.size().height * 0.2;
 	tmp = medianBlurMat(Rect(0, eyeTrimHeight, medianBlurMat.size().width, medianBlurMat.size().height - (eyeTrimHeight)));
 	
-	threshold( tmp, tmp, HCParam1, 255, CV_THRESH_BINARY_INV);  // 8
-    showWindowAtPosition( windowName + " tresh", tmp, windowX, windowY + 130);
-	
 	int erosion_size = 1;  // 2
     Mat ErosElement = getStructuringElement(MORPH_RECT, Size(2 * erosion_size + 1, 2 * erosion_size + 1), Point(erosion_size, erosion_size) );
     erode( tmp, tmp, ErosElement );
-   
+    
+    threshold( tmp, tmp, 4, 255, CV_THRESH_BINARY_INV);  // 8
+    //showWindowAtPosition( windowName + " tresh", tmp, windowX, windowY + 130);
 
 	vector<vector<Point> > contours;
     Mat threshold_output = tmp.clone();
@@ -570,6 +580,8 @@ Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int
 
 Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY)
 {
+//    showWindowAtPosition( windowName + " eye refl", eye, x, y);
+    
 	Mat gaussEye, binaryEye;
 
 	GaussianBlur( eye, gaussEye, Size(3,3), 0, 0, BORDER_DEFAULT );
@@ -591,8 +603,8 @@ Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int 
 
 	addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
 
-	threshold(grad, binaryEye, HCParam2, 255, CV_THRESH_BINARY);    //180
-
+	threshold(grad, binaryEye, 91, 255, CV_THRESH_BINARY);    //
+    //showWindowAtPosition( windowName + " eye bin", binaryEye, x, y);
 	//	Mozna jeste pridat erozi???
 
 
@@ -600,8 +612,8 @@ Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int 
 	inpaint(eye, binaryEye, reparedEye, 3, INPAINT_TELEA);
 
 	// Draw
-	// showWindowAtPosition( windowName + " - eye", eye, x, y + 260);
-	// showWindowAtPosition( windowName + " - bez odlesku", reparedEye, x, y + 390);
+	//showWindowAtPosition( windowName + " - eye", eye, x, y + 260);
+	//showWindowAtPosition( windowName + " - bez odlesku", reparedEye, x, y + 390);
 	
 	return reparedEye;
 }
@@ -644,6 +656,8 @@ Mat orientationMap(const cv::Mat& mag, const cv::Mat& ori, double thresh = 1.0)
 
 void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
 {
+    int64 e1 = getTickCount();
+    
 	GaussianBlur( eye, eye, Size(3,3), 0, 0, BORDER_DEFAULT );
 
 	// Gradient
@@ -667,7 +681,7 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
 
     Mat direction, acceptedDirectionPares;
     
-    acceptedDirectionPares = grad.clone();
+    acceptedDirectionPares = eye.clone();
     // Obarveni na cerno - to by asi slo udelat lip - napr. vytvorit Mat se stejnymi rozmery jako grad, ale rovnou cerny, nebo tak neco...
     for (int i = 0; i < acceptedDirectionPares.cols; i++)
     {
@@ -736,8 +750,8 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
                                 pairVectors.push_back(Vec4f(j, i, l, k));
                                 
                                 // debug obarveni
-                                //acceptedDirectionPares.at<uchar>(i, j) = 255;
-                                //acceptedDirectionPares.at<uchar>(k, l) = 255;
+                                acceptedDirectionPares.at<uchar>(i, j) = 255;
+                                acceptedDirectionPares.at<uchar>(k, l) = 255;
 //                                acceptedDirectionPares.at<uchar>(l, k) = grad.at<uchar>(l, k);
 //                                acceptedDirectionPares.at<uchar>(j, i) = grad.at<uchar>(j, i);
                             }
@@ -752,13 +766,11 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
     
     // *********************** TMP **************************
     //25,11 ; 46,36
-//    acceptedDirectionPares.at<uchar>(36, 46) = 255;
-//    acceptedDirectionPares.at<uchar>(11, 25) = 255;
     //pairVectors.clear();
     //pairVectors.push_back(Vec4f(25, 11, 46, 36));
     
     vector<Vec4f> pairVectorsWithRadius;
-    int minRad = 5, maxRad = 15;
+    int minRad = 5, maxRad = 20;
     
     for (int i = 0; i < pairVectors.size(); i++)
     {
@@ -796,8 +808,10 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
         //acceptedDirectionPares.at<uchar>(vec[1], vec[0]) = 255;
         
         float mag = sqrt(pow(vec[0], 2) + pow(vec[1], 2));
-        Vec2i center = Vec2i(lround(vec[0] * 0.5), lround(vec[1] * 0.5));
-        center += Vec2i(pairVectorsWithRadius[i][0], pairVectorsWithRadius[i][1]);
+//        Vec2i center = Vec2i(lround(vec[0] * 0.5), lround(vec[1] * 0.5));
+//        center += Vec2i(pairVectorsWithRadius[i][0], pairVectorsWithRadius[i][1]);
+        Vec2i center = Vec2f((pairVectorsWithRadius[i][0] + pairVectorsWithRadius[i][2]), (pairVectorsWithRadius[i][1] + pairVectorsWithRadius[i][3])) * 0.5;
+        
         if (center[0] >= grad.cols)
             center[0] = grad.cols -1;
         if (center[1] >= grad.rows)
@@ -840,32 +854,34 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
     cout << "best cirlce is " << bestCircle << " with max = " << max << endl;
     circle(frame, Point(bestCircle[0] + frameX, bestCircle[1] + frameY), bestCircle[2], CV_RGB(255, 0, 0));
     
-    // zobrazeni akumulatoru
-    Mat accMat = grad.clone();
-    for (int i = 0; i < accMat.cols; ++i)
-    {
-        max = 0;
-        for (int j = 0; j < accMat.rows; ++j)
-        {
-            for (int k = minRad; k < maxRad; ++k)
-            {
-                if (accumulator[i][j][k] > max)
-                {
-                    max = accumulator[i][j][k];
-                    bestCircle = Vec3i(i, j, k);
-                }
-            }
-            
-            accMat.at<uchar>(j, i) = max;
-        }
-    }
+//    // zobrazeni akumulatoru
+//    Mat accMat = grad.clone();
+//    for (int i = 0; i < accMat.cols; ++i)
+//    {
+//        max = 0;
+//        for (int j = 0; j < accMat.rows; ++j)
+//        {
+//            for (int k = minRad; k < maxRad; ++k)
+//            {
+//                if (accumulator[i][j][k] > max)
+//                {
+//                    max = accumulator[i][j][k];
+//                    bestCircle = Vec3i(i, j, k);
+//                }
+//            }
+//            
+//            accMat.at<uchar>(j, i) = max;
+//        }
+//    }
     
     
+    double time = (getTickCount() - e1)/ getTickFrequency();
+    cout << endl << "time = " << time << endl;
 
-//	showWindowAtPosition( windowName + "grad", grad, windowX, windowY);
-//    showWindowAtPosition( windowName + "_direction", mat2gray(direction), windowX, windowY + 130);
-//    showWindowAtPosition( windowName + "_accepted dir", acceptedDirectionPares, windowX, windowY + 260);
-//    showWindowAtPosition( windowName + "_acc", accMat, windowX, windowY + 390);
+	showWindowAtPosition( windowName + "grad", grad, windowX, windowY);
+    showWindowAtPosition( windowName + "_direction", mat2gray(direction), windowX, windowY + 130);
+    showWindowAtPosition( windowName + "_accepted dir", acceptedDirectionPares, windowX, windowY + 260);
+    //showWindowAtPosition( windowName + "_acc", accMat, windowX, windowY + 390);
     
 }
 
@@ -873,15 +889,22 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
 {
     Mat tresholdedEye;
     
-    //threshold( eye, tresholdedEye, HCParam1, 255, CV_THRESH_BINARY);
+    //eye = frame = imread("/Users/jakubvlk/MyShit/BlinkRate/res/pics/gradTestSmallEye.jpg");
+    cvtColor( eye, eye, CV_BGR2GRAY );
     
-    showWindowAtPosition( windowName + " eye", eye, windowX, windowY);
-    //showWindowAtPosition( windowName + " tresh", tresholdedEye, windowX, windowY + 130);
+    // contrast adjustment using the image's histogram
+    equalizeHist( eye, eye );
+    
+    threshold( eye, tresholdedEye, HCParam1, 255, CV_THRESH_BINARY);
+    
+    //showWindowAtPosition( windowName + " eye", eye, windowX, windowY + 520);
+    //showWindowAtPosition( windowName + " tresh", tresholdedEye, windowX, windowY + 600);
 }
 
 void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
 {
-
+    showWindowAtPosition( windowName + "PRE eye hough", eye, windowX, windowY );
+    
 	GaussianBlur( eye, eye, Size(3,3), 0, 0, BORDER_DEFAULT );
 
 	// Gradient
@@ -990,7 +1013,7 @@ void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int wind
 	for (int x = xMin; x <= xMax; ++x)
 	{		
 		int j = 0;
-		for (int y = yMin; y < yMax; ++y)
+		for (int y = yMin; y <= yMax; ++y)
 		{
 			for (int k = 0; k < gradientsCount; ++k)
 			{		
@@ -1013,7 +1036,7 @@ void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int wind
 	//cout << "max grad = " << maxGrad << " s rad = " << maxGradRad << endl;
 	
 	// drawing
-	//showWindowAtPosition( windowName + "_nova oblast", grad, windowX, windowY);
+	showWindowAtPosition( windowName + "_nova oblast", grad, windowX, windowY + 130);
 
 	cvtColor(grad, grad, CV_GRAY2BGR);
 
@@ -1031,12 +1054,17 @@ void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int wind
 	irises.push_back(Vec3f(center.x + frameX, center.y + frameY, maxGradRad));
 
 
-	//showWindowAtPosition( windowName + "_nova oblast + cicles", grad, windowX, windowY + 130 );
+	showWindowAtPosition( windowName + "_nova oblast + cicles", grad, windowX, windowY + 260 );
 
 
 	cvtColor(eye, eye, CV_GRAY2BGR);
 	circle(eye, center, maxGradRad, color);
 	//showWindowAtPosition( windowName + "_nova oblast + eye", eye, windowX, windowY + 260  );
+    
+    //showWindowAtPosition( windowName + "POST eye hough", eye, windowX, windowY + 390);
+    //findPupil(eye(Rect(center.x - maxGradRad, center.y - maxGradRad, maxGradRad*2, maxGradRad*2)), windowName, windowX, windowY, frameX, frameY);
+    //findPupil(frame(Rect(frameX + center.x - maxGradRad, frameY + center.y - maxGradRad, maxGradRad*2, maxGradRad*2)), windowName, windowX, windowY, frameX, frameY);
+    //showWindowAtPosition( windowName +  + "eye", frame(Rect(frameX, frameY, eye.size().width, eye.size().height)), windowX, windowY + 650);
 }
 
 
