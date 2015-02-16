@@ -1,3 +1,5 @@
+// TODO: Zmensit obraz na asi 640x480
+
 // Hough transform - na rozpoznavani usecek a dalsich vecich, jako treba kruznic (kruhovych oblouku)
 /*
 TODO: 1) Podivat se jak detekuji oci a a pokud nedetekuji kazde vzlast, tak udelat trenovani.
@@ -37,12 +39,14 @@ Rect pickFace(vector<Rect> faces);
 void drawIrises();
 void drawEyesCentres();
 
+Mat resizeMat(Mat src, int width);
 Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 void myHoughCircle(Mat eye, int kernel, string windowName, int x, int y, int frameX, int frameY, Point center);
 Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY);
 
 void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
+
 
 //trackbars
 void onHCParam1Trackbar(int pos, void *);
@@ -115,6 +119,8 @@ int main( int argc, const char** argv )
 	else
 	{
 		frame = imread(file);
+        frame = resizeMat(frame, 640);
+        
 		originalFrame = frame.clone();
 		detectAndDisplay(frame);
 		
@@ -133,7 +139,9 @@ int main( int argc, const char** argv )
 					
 					if( (char)c == 'n' || (char)c == 'N' || showWindow)
 					{
-						frame = cvQueryFrame( capture );
+                        frame = cvQueryFrame( capture );
+                        frame = resizeMat(frame, 640);
+                        
 						originalFrame = frame.clone();
 				
 						//-- 3. Apply the classifier to the frame
@@ -164,6 +172,8 @@ int main( int argc, const char** argv )
 				else
 				{
 					frame = cvQueryFrame( capture );
+                    frame = resizeMat(frame, 640);
+                    
 					originalFrame = frame.clone();
 				
 					//-- 3. Apply the classifier to the frame
@@ -264,7 +274,7 @@ void loadCascades()
 /** @function detectAndDisplay */
 void detectAndDisplay( Mat frame )
 {
-	vector<Rect> faces;
+    vector<Rect> faces;
   	Mat frame_gray;
   	eyesCentres.clear();
   	irises.clear();
@@ -520,6 +530,17 @@ void onHCMinDistanceTrackbar(int pos, void *)
 	cout << "HC Min Distance = " << HCMinDistance << endl;
 
 	refreshImage();
+}
+
+Mat resizeMat(Mat src, int width)
+{
+    Mat resizedMat;
+    
+    double widthRatio = width / (double)src.size().width;
+    
+    resize(src, resizedMat, Size(width, lround(widthRatio * src.size().height)));
+    
+    return resizedMat;
 }
 
 Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
