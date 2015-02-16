@@ -38,7 +38,7 @@ void drawIrises();
 void drawEyesCentres();
 
 Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
-void myCircleHough(Mat eye, int kernel, string windowName, int x, int y, int frameX, int frameY, Point center);
+void myHoughCircle(Mat eye, int kernel, string windowName, int x, int y, int frameX, int frameY, Point center);
 Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY);
 
 void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
@@ -297,10 +297,10 @@ void detectAndDisplay( Mat frame )
 
     	for( size_t j = 0; j < eyes.size(); j++ )
      	{
-     		//rectangle( frame, Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height), Scalar( 0, 0, 255 ), 4, 8, 0 );
+     		rectangle( frame, Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height), Scalar( 0, 0, 255 ), 4, 8, 0 );
             
             // Pokus - Zkouska, jestli equalize na ocni oblast, zlepsi kvalitu rozpoznani
-            Mat newFaceROI = frame(Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height));
+            Mat newFaceROI = originalFrame(Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height));
             // convert from color to grayscale
             cvtColor( newFaceROI, newFaceROI, CV_BGR2GRAY );
             // contrast adjustment using the image's histogram
@@ -312,11 +312,11 @@ void detectAndDisplay( Mat frame )
 			sprintf(numstr, "%d", static_cast<int>(j + 1));
 			string eyeName = "eye";
 
-			eyeMat = removeReflections(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+			Mat eyeWithoutReflection = removeReflections(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
-			Point eyeCenter = setEyesCentres(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+			Point eyeCenter = setEyesCentres(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
-			myCircleHough(eyeMat, 1, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+			myHoughCircle(eyeMat, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
 			//FCD(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             //findPupil(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}
@@ -901,11 +901,11 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
     //showWindowAtPosition( windowName + " tresh", tresholdedEye, windowX, windowY + 600);
 }
 
-void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
+void myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
 {
-    showWindowAtPosition( windowName + "PRE eye hough", eye, windowX, windowY );
+    //showWindowAtPosition( windowName + "PRE eye hough", eye, windowX, windowY );
     
-	GaussianBlur( eye, eye, Size(3,3), 0, 0, BORDER_DEFAULT );
+	GaussianBlur( eye, eye, Size(7,7), 0, 0, BORDER_DEFAULT );
 
 	// Gradient
 	Mat grad_x, grad_y;
@@ -919,15 +919,17 @@ void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int wind
 	Sobel( eye, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
 	/// Gradient Y
 	Sobel( eye, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
-
-	convertScaleAbs( grad_x, abs_grad_x );
+    
+    convertScaleAbs( grad_x, abs_grad_x );
 	convertScaleAbs( grad_y, abs_grad_y );
-
-	addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
+    
+    addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
+    
+    grad = mat2gray(abs_grad_x);
 
 
 	// polomery
-	int minRadius = 8, maxRadius = eye.size().width * 0.25	;
+	int minRadius = 8, maxRadius = eye.size().width * 0.3	;
 
 	int gradientsCount = maxRadius - minRadius + 1;
 	double gradients[kernel][kernel][gradientsCount];
@@ -964,8 +966,8 @@ void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int wind
     
     if (kernel == 1)
     {
-        xMin = yMin = 0;
-        xMax = yMax = 0;
+        xMin = xMax = center.x;
+        yMin = yMax = center.y;
         
     }
 
@@ -982,13 +984,13 @@ void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int wind
 				double step = 2* M_PI / (r*2);
 
 				int stepsCount = 0;
-				for(double theta = 0;  theta < 2 * M_PI;  theta += step)
+                for(double theta = 0;  theta < 2 * M_PI;  theta += step)
 				{
 					int circleX = lround(x + r * cos(theta));
 					int circleY = lround(y - r * sin(theta));
-				
-					gradients[i][j][k] += grad.at<uchar>(circleX, circleY);
-
+                    
+					gradients[i][j][k] += grad.at<uchar>(circleY, circleX);
+                    
 					stepsCount++;
 				}
 
@@ -1007,16 +1009,17 @@ void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int wind
 
 	double maxGrad = 0;
 	double maxGradRad = 0;
-	Point newCenter = center;
+    
+    Point newCenter = center;
 
-	i = 0;
+    i = 0;
 	for (int x = xMin; x <= xMax; ++x)
 	{		
 		int j = 0;
 		for (int y = yMin; y <= yMax; ++y)
 		{
 			for (int k = 0; k < gradientsCount; ++k)
-			{		
+			{
 				if (gradients[i][j][k] > maxGrad)
 				{
 					maxGrad = gradients[i][j][k];
@@ -1024,7 +1027,7 @@ void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int wind
 
 					newCenter.x = x;
 					newCenter.y = y;
-				}
+                }
 			}
 		}
 	}
@@ -1033,7 +1036,7 @@ void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int wind
 
 	maxGradRad += minRadius;
 
-	//cout << "max grad = " << maxGrad << " s rad = " << maxGradRad << endl;
+    //cout << "max grad = " << maxGrad << " s rad = " << maxGradRad << endl << endl;
 	
 	// drawing
 	showWindowAtPosition( windowName + "_nova oblast", grad, windowX, windowY + 130);
@@ -1061,7 +1064,7 @@ void myCircleHough(Mat eye, int kernel, string windowName, int windowX, int wind
 	circle(eye, center, maxGradRad, color);
 	//showWindowAtPosition( windowName + "_nova oblast + eye", eye, windowX, windowY + 260  );
     
-    //showWindowAtPosition( windowName + "POST eye hough", eye, windowX, windowY + 390);
+    showWindowAtPosition( windowName + "POST eye hough", eye, windowX, windowY + 390);
     //findPupil(eye(Rect(center.x - maxGradRad, center.y - maxGradRad, maxGradRad*2, maxGradRad*2)), windowName, windowX, windowY, frameX, frameY);
     //findPupil(frame(Rect(frameX + center.x - maxGradRad, frameY + center.y - maxGradRad, maxGradRad*2, maxGradRad*2)), windowName, windowX, windowY, frameX, frameY);
     //showWindowAtPosition( windowName +  + "eye", frame(Rect(frameX, frameY, eye.size().width, eye.size().height)), windowX, windowY + 650);
