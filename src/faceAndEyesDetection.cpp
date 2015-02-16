@@ -316,7 +316,7 @@ void detectAndDisplay( Mat frame )
 
 			Point eyeCenter = setEyesCentres(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
-			myHoughCircle(eyeMat, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+			myHoughCircle(eyeWithoutReflection, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
 			//FCD(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             //findPupil(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}
@@ -374,12 +374,12 @@ vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 	vector<Rect> correctEyes = eyes;
 
 	// prostor pro oci je urcite ve vrchni polovine obliceje...  !!! toto by se dalo udelat i zmensenim oblasti obliceje o 1/2 -> lepsi vykon!!!
-	for (int i = 0; i < eyes.size(); ++i)
+	for (int i = 0; i < correctEyes.size(); ++i)
 	{
-		if (eyes[i].y > (face.size().height * 0.5 ))
+		if (correctEyes[i].y > (face.size().height * 0.5 ))
 		{
+            cout << "Mazu! Oblast oka mimo vrchni polovinu obliceje. x,y = " << correctEyes[i].x << ", " << correctEyes[i].y << ". Polovina obliceje ma delku " << face.size().height * 0.5 << endl;
 			correctEyes.erase(correctEyes.begin() + i);
-			cout << "Mazu! Oblast oka mimo vrchni polovinu obliceje. x,y = " << eyes[i].x << ", " << eyes[i].y << ". Polovina obliceje ma delku " << face.size().height * 0.5 << endl;
 		}
 	}
 
@@ -427,10 +427,23 @@ vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 						if (correctEyes[i].width > correctEyes[j].width)
 						{
 							correctEyes.erase(correctEyes.begin() + j);
+                            cout << "mazu j " << j << endl;
+                            
+                            if ( i >= correctEyes.size())
+                                i = correctEyes.size() - 1;
+                            if ( j >= correctEyes.size())
+                                j = correctEyes.size() - 1;
 						}
 						else
 						{
 							correctEyes.erase(correctEyes.begin() + i);
+                            cout << "mazu i " << i << endl;
+                            
+                            if ( j >= correctEyes.size())
+                                j = correctEyes.size() - 1;
+                            if ( i >= correctEyes.size())
+                                i = correctEyes.size() - 1;
+                            
 						}
 					}
 				}
@@ -711,7 +724,7 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
 //                for (int l = 0; l < direction.rows; l++)
 //                {
                     // Pokud nemaji nulovou velikost gradientu
-                    if (grad.at<uchar>(i, j) != 0 && grad.at<uchar>(k, l) != 0)
+                    if (abs_grad_x.at<uchar>(i, j) != 0 && abs_grad_x.at<uchar>(k, l) != 0)
                     {
                         int opositeAngleTresh = 4;
                         // musi mit cca opacny uhel
@@ -785,10 +798,10 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
     }
     
     // TODO: zmensit pole jenom na pouzite radiusy. Ted je tam zbytecne 0 az minRadius-1
-    int accumulator[grad.cols][grad.rows][maxRad];
-    for (int i = 0; i < grad.cols; ++i)
+    int accumulator[abs_grad_x.cols][abs_grad_x.rows][maxRad];
+    for (int i = 0; i < abs_grad_x.cols; ++i)
     {
-        for (int j = 0; j < grad.rows; ++j)
+        for (int j = 0; j < abs_grad_x.rows; ++j)
         {
             for (int k = 0; k < maxRad; ++k)
             {
@@ -812,10 +825,10 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
 //        center += Vec2i(pairVectorsWithRadius[i][0], pairVectorsWithRadius[i][1]);
         Vec2i center = Vec2f((pairVectorsWithRadius[i][0] + pairVectorsWithRadius[i][2]), (pairVectorsWithRadius[i][1] + pairVectorsWithRadius[i][3])) * 0.5;
         
-        if (center[0] >= grad.cols)
-            center[0] = grad.cols -1;
-        if (center[1] >= grad.rows)
-            center[1] = grad.rows -1;
+        if (center[0] >= abs_grad_x.cols)
+            center[0] = abs_grad_x.cols -1;
+        if (center[1] >= abs_grad_x.rows)
+            center[1] = abs_grad_x.rows -1;
         
         accumulator[center[0]][center[1]][lround(mag * 0.5)]++;
         //acceptedDirectionPares.at<uchar>(center[1], center[0]) = 255;
@@ -835,9 +848,9 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
     
     Vec3i bestCircle;
     int max = 0;
-    for (int i = 0; i < grad.cols; ++i)
+    for (int i = 0; i < abs_grad_x.cols; ++i)
     {
-        for (int j = 0; j < grad.rows; ++j)
+        for (int j = 0; j < abs_grad_x.rows; ++j)
         {
             for (int k = minRad; k < maxRad; ++k)
             {
@@ -878,7 +891,7 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
     double time = (getTickCount() - e1)/ getTickFrequency();
     cout << endl << "time = " << time << endl;
 
-	showWindowAtPosition( windowName + "grad", grad, windowX, windowY);
+	showWindowAtPosition( windowName + "grad", abs_grad_x, windowX, windowY);
     showWindowAtPosition( windowName + "_direction", mat2gray(direction), windowX, windowY + 130);
     showWindowAtPosition( windowName + "_accepted dir", acceptedDirectionPares, windowX, windowY + 260);
     //showWindowAtPosition( windowName + "_acc", accMat, windowX, windowY + 390);
@@ -925,6 +938,7 @@ void myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int wind
     
     addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
     
+    // Je to lepsi???????????????
     grad = mat2gray(abs_grad_x);
 
 
