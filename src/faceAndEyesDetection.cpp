@@ -1,5 +1,3 @@
-// TODO: Zmensit obraz na asi 640x480
-
 // Hough transform - na rozpoznavani usecek a dalsich vecich, jako treba kruznic (kruhovych oblouku)
 /*
 TODO: 1) Podivat se jak detekuji oci a a pokud nedetekuji kazde vzlast, tak udelat trenovani.
@@ -14,6 +12,7 @@ TODO: 1) Podivat se jak detekuji oci a a pokud nedetekuji kazde vzlast, tak udel
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/photo/photo.hpp"
+#include "opencv2/opencv.hpp"
 
 
 #include <iostream>
@@ -41,11 +40,15 @@ void drawEyesCentres();
 
 Mat resizeMat(Mat src, int width);
 Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
+Point findEyeCentre ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 void myHoughCircle(Mat eye, int kernel, string windowName, int x, int y, int frameX, int frameY, Point center);
 Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY);
 
 void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
+void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
+void blob(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
+
 
 
 //trackbars
@@ -96,11 +99,11 @@ int main( int argc, const char** argv )
 	CvCapture* capture;
 	// Mat frame;
 
-	sliderHCParam1 = HCParam1 = 14;	//26	//35
-	sliderHCParam2 = HCParam2 = 14;		//21	//30
+	sliderHCParam1 = HCParam1 = 1;	//26	//35
+	sliderHCParam2 = HCParam2 = 16;		//21	//30
 	
 	sliderHCDp = 17;	// deli se to 10...	// 30
-	HCDp = 1.7;	// 3
+	HCDp = 1;	// 3
 	
 	sliderHCMinDistance = HCMinDistance = 1;	// 170	//57
 
@@ -307,7 +310,7 @@ void detectAndDisplay( Mat frame )
 
     	for( size_t j = 0; j < eyes.size(); j++ )
      	{
-     		rectangle( frame, Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height), Scalar( 0, 0, 255 ), 4, 8, 0 );
+            rectangle( frame, Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height), Scalar( 0, 0, 255 ), 2);
             
             // Pokus - Zkouska, jestli equalize na ocni oblast, zlepsi kvalitu rozpoznani
             Mat newFaceROI = originalFrame(Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height));
@@ -325,21 +328,25 @@ void detectAndDisplay( Mat frame )
 			Mat eyeWithoutReflection = removeReflections(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
 			Point eyeCenter = setEyesCentres(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            findEyeCentre(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
 			myHoughCircle(eyeWithoutReflection, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+            //findEyeLids(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 			//FCD(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             //findPupil(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            //blob(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}
 
 		if (drawInFrame)
 		{
 	     	drawEyesCentres();
-            drawIrises();
+            //drawIrises();
 	    }
     }
 
     //FCD(frame_gray, "", 820 + 220 , 0, 0, 0);
     //findPupil(frame_gray, "", 820 + 220 , 0, 0, 0);
+//    blob(frame_gray, "", 820 + 220 , 0, 0, 0);
 
 
   	imshow( window_name, frame );
@@ -381,6 +388,8 @@ Rect pickFace(vector<Rect> faces)
 
 vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 {
+    // moznost: vertikalne rozdelit tvar do 4 casti. Oci by mely byt v 2. casti
+    
 	vector<Rect> correctEyes = eyes;
 
 	// prostor pro oci je urcite ve vrchni polovine obliceje...  !!! toto by se dalo udelat i zmensenim oblasti obliceje o 1/2 -> lepsi vykon!!!
@@ -543,6 +552,315 @@ Mat resizeMat(Mat src, int width)
     return resizedMat;
 }
 
+void blob(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
+{
+    showWindowAtPosition( windowName + " eye centres", eye, windowX, windowY + 130);
+    
+    // Read image
+    Mat im = eye;//imread( "/Users/jakubvlk/MyShit/BlinkRate/res/pics/blob.jpg", CV_LOAD_IMAGE_GRAYSCALE );
+    
+    // Setup SimpleBlobDetector parameters.
+    SimpleBlobDetector::Params params;
+    
+    // Change thresholds
+    params.minThreshold = 0;
+    params.maxThreshold = HCParam1;
+    params.thresholdStep = 2;
+    
+    //params.minDistBetweenBlobs = HCParam1;
+    //cout << params.minDistBetweenBlobs << endl;
+
+    params.filterByColor = true;
+    params.blobColor = 0;
+    
+    // Filter by Area.
+//    params.filterByArea = true;
+//    params.minArea = HCParam1;
+//
+    // Filter by Circularity
+    params.filterByCircularity = true;
+    params.minCircularity = 0.5;
+    
+    // Filter by Convexity
+    params.filterByConvexity = true;
+    params.minConvexity = 0.87;
+    
+    // Filter by Inertia
+    params.filterByInertia = true;
+    params.minInertiaRatio = 0.01;
+    
+    // Set up detector with params
+    SimpleBlobDetector detector(params);
+    
+    // Storage for blobs
+    std::vector<KeyPoint> keypoints;
+    
+    // Detect blobs
+    detector.detect( im, keypoints);
+    
+    // Draw detected blobs as red circles.
+    // DrawMatchesFlags::DRAW_RICH_KEYPOINTS flag ensures
+    // the size of the circle corresponds to the size of blob
+    
+    Mat im_with_keypoints;
+    drawKeypoints( im, keypoints, im_with_keypoints, Scalar(0,0,255), DrawMatchesFlags::DRAW_RICH_KEYPOINTS );
+    
+//    showWindowAtPosition( windowName + " tresh", im_with_keypoints, windowX, windowY + 130);
+    
+    for (int i = 0; i < keypoints.size(); i++)
+    {
+        Point frameCenter(keypoints[i].pt.x + frameX, keypoints[i].pt.y + frameY);
+        Scalar color = Scalar(0, 255, 0);
+        
+        //circle( frame, eyesCentres[i], radius, color, 3);
+        int lineLength = 10;
+        line(frame, Point(frameCenter.x - lineLength*0.5, frameCenter.y), Point(frameCenter.x + lineLength*0.5, frameCenter.y), color);
+        line(frame, Point(frameCenter.x, frameCenter.y - lineLength*0.5), Point(frameCenter.x, frameCenter.y + lineLength*0.5), color);
+        
+        showWindowAtPosition( windowName + " tresh", im_with_keypoints, windowX, windowY + 260);
+    }
+
+}
+
+float avgIntensity(Mat mat, int x, int y, int width, int height, int maxIntensity)
+{
+    int totalIntensity = 0;
+    int pixelCount = 0;
+    
+    for (int i = y; i < y + height; i++)
+    {
+        for (int j = x; j < x + width; j++)
+        {
+            int intensity = mat.at<uchar>(i, j);
+            
+            if (intensity < maxIntensity)
+            {
+                totalIntensity += intensity;
+                pixelCount++;
+            }
+            else
+            {
+                cout << "damn" << endl;
+            }
+
+        }
+    }
+    
+//    Mat newMat = mat(Rect(x, y, width, height));
+//    showWindowAtPosition( "roi", newMat, 600, 0);
+//    
+//    
+//    rectangle( mat, Rect(x, y, width, height), CV_RGB(255, 255, 0));
+//    showWindowAtPosition( "mat", mat, 600, 100);
+    
+    return totalIntensity / (float)pixelCount;
+}
+
+Point findEyeCentre ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
+{
+    // Vylepseni:
+    //  nejaka filtrace obrazu;      minimalni rozmer kontury - obsah, rozmery??;     nadetekujem nejvetsi konturu. Druha nejvetsi NESMI lezet v te prvni (uvnitr), mozna ani castecne.
+    // Mozna: orezat oboci?
+    
+    // kdyz to nepujde, tak zkusit nejak predelat na me reseni
+    
+    //GaussianBlur( eye, eye, Size(5, 5), 2, 2 );	//bilateralFilter ???
+    if (HCParam1 % 2 == 0)
+        HCParam1++;
+    
+    medianBlur(eye, eye, 5); //7
+    
+    showWindowAtPosition( windowName + " eye", eye, windowX, windowY);
+    
+    // 3.1. INTENSITY SCALING 4~8
+    Mat intensiveEye = eye.clone();
+    int k = 5;
+    
+    for (int i = 0; i < intensiveEye.cols; i++)
+    {
+        for (int j = 0; j < intensiveEye.rows; j++)
+        {
+            int intensity = intensiveEye.at<uchar>(j, i) * k;
+            if (intensity > 255)
+                intensity = 255;
+            intensiveEye.at<uchar>(j, i) = intensity;
+        }
+    }
+    
+    
+    
+    showWindowAtPosition( windowName + " post intensity", intensiveEye, windowX, windowY + 130);
+    
+    // otsu tresh
+    Mat uselessMat;
+    double otsu_thresh_val = threshold( intensiveEye, uselessMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU );
+    showWindowAtPosition( windowName + " otsu", uselessMat, windowX, windowY + 260);
+    
+    double high_thresh_val  = otsu_thresh_val;
+    double lower_thresh_val = otsu_thresh_val * 0.5;
+    //cout << "Computed tresholds = " << high_thresh_val << ", " << lower_thresh_val << endl;
+    
+    Mat eyeCanny;
+    Canny(uselessMat, eyeCanny, lower_thresh_val, high_thresh_val);
+    
+    showWindowAtPosition( windowName + " canny", eyeCanny, windowX, windowY + 390);
+    
+    // najit kontury
+    vector<vector<Point> > contours;
+    Mat threshold_output = eyeCanny.clone();
+    vector<Vec4i> hierarchy;
+    
+    findContours( threshold_output, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    cout << "pocet kontur = " << contours.size() << endl;
+    
+    /// Approximate contours to polygons + get bounding rects and circles
+    vector<vector<Point> > contours_poly( contours.size() );
+    vector<Rect> boundRect( contours.size() );
+    vector<Point2f>center( contours.size() );
+    vector<float>radius( contours.size() );
+    
+    for( int i = 0; i < contours.size(); i++ )
+    {
+        approxPolyDP( Mat(contours[i]), contours_poly[i], 3, true );
+       	boundRect[i] = boundingRect( Mat(contours_poly[i]) );
+       	minEnclosingCircle( (Mat)contours_poly[i], center[i], radius[i] );
+    }
+    
+    Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
+    for( int i = 0; i< contours.size(); i++ )
+    {
+        Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+        drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+        rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0 );
+        //circle( drawing, center[i], (int)radius[i], color, 2, 8, 0 );
+    }
+    
+     showWindowAtPosition( windowName + " draw", drawing, windowX, windowY + 680);
+    
+    // 3.2. IRIS CONTOUR SELECTION
+    // Pokud boundRect.height >= 3/2 * boundRect.width tak tuto konturu nepozujeme za korektni
+    
+    double threeHalfs = 3/2.;
+    for( int i = 0; i < boundRect.size(); )
+    {
+        if (boundRect[i].height >= threeHalfs * boundRect[i].width)
+        {
+            boundRect.erase(boundRect.begin() + i);
+            cout << "Rejected" << endl;
+        }
+        else
+        {
+            i++;
+        }
+    }
+    
+    // Vybereme 2 nejvetsi bounding boxy (muze byt oko a oboci)
+    
+    int indexCandidate1 = -1, indexCandidate2 = -1, finalCandidate = 0;
+    bool empty = boundRect.size() == 0;
+    
+    int minWidth = 3;
+    int minHeight = 3;
+    int minAre = minWidth * minHeight;
+    
+    if (!empty)
+    {
+        if (boundRect.size() > 1)
+        {
+            int max = -1;
+            
+            for( int i = 0; i < boundRect.size(); i++)
+            {
+                if (boundRect[i].size().area() > max)
+                {
+                    indexCandidate1 = i;
+                    max = boundRect[i].size().area();
+                }
+            }
+            
+            max = -1;
+            for( int i = 0; i < boundRect.size(); i++)
+            {
+                // Pokud to neni prvni kontura, neprekryva se s prvni konturou, je vetsi nez minArea a je (zatim) nejvetsi
+                if (indexCandidate1 != i && (boundRect[indexCandidate1] & boundRect[i]).area() == 0 && boundRect[i].area() > minAre && boundRect[i].size().area() > max)
+                {
+                    if (boundRect[i].width > minWidth && boundRect[i].height > minHeight && boundRect[i].area() > minAre)
+                    {
+                        indexCandidate2 = i;
+                        max = boundRect[i].size().area();
+                    }
+                }
+            }
+            
+            if (indexCandidate2 != -1)
+            {
+                // Porovname Y souradnici stredu. Pokud maji podobnou, tak urcime finalniho kandidata pomoci intensity. Pokud nemaji podobnou Y souradnici stredu, tak finalni kandidat bude ten s vyssi Y souradnici stredu.
+                int yDistanceThresh = 5;
+                if (abs ( center[indexCandidate1].y - center[indexCandidate2].y ) <= yDistanceThresh)
+                {
+                    int maxIntensity = 250;
+                    float intens1 = avgIntensity(eye, boundRect[indexCandidate1].tl().x, boundRect[indexCandidate1].tl().y, boundRect[indexCandidate1].width, boundRect[indexCandidate1].height, maxIntensity);
+                    float intens2 = avgIntensity(eye, boundRect[indexCandidate2].tl().x, boundRect[indexCandidate2].tl().y, boundRect[indexCandidate2].width, boundRect[indexCandidate2].height, maxIntensity);
+                    
+                    if (intens1 < intens2)
+                    {
+                        finalCandidate = indexCandidate1;
+                    }
+                    else
+                    {
+                        finalCandidate = indexCandidate2;
+                    }
+                }
+                else
+                {
+                    if (center[indexCandidate1].y > center[indexCandidate2].y)
+                    {
+                        finalCandidate = indexCandidate1;
+                    }
+                    else
+                    {
+                        finalCandidate = indexCandidate2;
+                    }
+                }
+            }
+            else
+            {
+                finalCandidate = indexCandidate1;
+            }
+        }
+        
+        //drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+        cvtColor(eye, eye, CV_GRAY2BGR);
+        Scalar color = CV_RGB(0, 0, 255);
+        rectangle( eye, boundRect[indexCandidate1].tl(), boundRect[indexCandidate1].br(), color);
+
+        if (indexCandidate2 != -1)
+            rectangle( eye, boundRect[indexCandidate2].tl(), boundRect[indexCandidate2].br(), color);
+        
+        Mat finalDrawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
+        //Scalar color2 = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+        //drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+        rectangle( eye, boundRect[finalCandidate].tl(), boundRect[finalCandidate].br(), CV_RGB(255, 0, 0));
+        
+        showWindowAtPosition( windowName + " final", eye, windowX, windowY + 580);
+    }
+    
+    
+    
+//    /// Draw polygonal contour + bonding rects + circles
+//    Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
+//    for( int i = 0; i< boundRect.size(); i++ )
+//    {
+//        Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+//        //drawContours( drawing, contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+//        rectangle( drawing, boundRect[i].tl(), boundRect[i].br(), color, 2, 8, 0 );
+//        //circle( drawing, center[i], (int)radius[i], color, 2, 8, 0 );
+//    }
+    
+    
+
+}
+
 Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
 {
     //showWindowAtPosition( windowName + " eye centres", eye, windowX, windowY);
@@ -555,12 +873,12 @@ Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int
 	double eyeTrimHeight = medianBlurMat.size().height * 0.2;
 	tmp = medianBlurMat(Rect(0, eyeTrimHeight, medianBlurMat.size().width, medianBlurMat.size().height - (eyeTrimHeight)));
 	
-	int erosion_size = 1;  // 2
+    int erosion_size = 1;  // 2
     Mat ErosElement = getStructuringElement(MORPH_RECT, Size(2 * erosion_size + 1, 2 * erosion_size + 1), Point(erosion_size, erosion_size) );
     erode( tmp, tmp, ErosElement );
     
     threshold( tmp, tmp, 4, 255, CV_THRESH_BINARY_INV);  // 8
-    //showWindowAtPosition( windowName + " tresh", tmp, windowX, windowY + 130);
+    //showWindowAtPosition( windowName + " tresh center", tmp, windowX, windowY + 130);
 
 	vector<vector<Point> > contours;
     Mat threshold_output = tmp.clone();
@@ -646,8 +964,8 @@ Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int 
 	inpaint(eye, binaryEye, reparedEye, 3, INPAINT_TELEA);
 
 	// Draw
-	//showWindowAtPosition( windowName + " - eye", eye, x, y + 260);
-	//showWindowAtPosition( windowName + " - bez odlesku", reparedEye, x, y + 390);
+//	showWindowAtPosition( windowName + " - eye", eye, x - 200, y + 260);
+//	showWindowAtPosition( windowName + " - bez odlesku", reparedEye, x - 200, y + 390);
 	
 	return reparedEye;
 }
@@ -912,15 +1230,106 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
     double time = (getTickCount() - e1)/ getTickFrequency();
     cout << endl << "time = " << time << endl;
 
-	showWindowAtPosition( windowName + "grad", abs_grad_x, windowX, windowY);
-    showWindowAtPosition( windowName + "_direction", mat2gray(direction), windowX, windowY + 130);
-    showWindowAtPosition( windowName + "_accepted dir", acceptedDirectionPares, windowX, windowY + 260);
+	//showWindowAtPosition( windowName + "grad", abs_grad_x, windowX, windowY);
+    //showWindowAtPosition( windowName + "_direction", mat2gray(direction), windowX, windowY + 130);
+    //showWindowAtPosition( windowName + "_accepted dir", acceptedDirectionPares, windowX, windowY + 260);
     //showWindowAtPosition( windowName + "_acc", accMat, windowX, windowY + 390);
     
 }
 
+void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
+{
+    showWindowAtPosition( windowName + "PRE eye lids", eye, windowX, windowY );
+    
+    GaussianBlur( eye, eye, Size(7,7), 0, 0, BORDER_DEFAULT );
+    
+    // Gradient
+    Mat grad_x, grad_y;
+    Mat abs_grad_x, abs_grad_y, grad;
+    
+    int scale = 1;
+    int delta = 0;
+    int ddepth = CV_16S;
+    
+    /// Gradient X
+    Sobel( eye, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+    /// Gradient Y
+    Sobel( eye, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+    
+    convertScaleAbs( grad_x, abs_grad_x );
+    convertScaleAbs( grad_y, abs_grad_y );
+    
+    addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
+    
+    // Je to lepsi???????????????
+    //grad = mat2gray(abs_grad_x);
+    
+//    showWindowAtPosition( windowName + "grad", grad, windowX, windowY + 130 );
+    showWindowAtPosition( windowName + "grad Y", abs_grad_y, windowX, windowY + 260);
+//    showWindowAtPosition( windowName + "grad x", abs_grad_x, windowX, windowY + 390);
+    
+    Mat bestEye = abs_grad_y.clone();
+    Mat uselessMat;
+    double otsu_thresh_val = threshold( bestEye, uselessMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU );
+    double high_thresh_val  = otsu_thresh_val;
+    double lower_thresh_val = otsu_thresh_val * 0.5;
+    //cout << "Computed tresholds = " << high_thresh_val << ", " << lower_thresh_val << endl;	//140,70
+    
+    // Mat eyeCanny;
+    //Canny(gaussienEye, gaussienEye, lower_thresh_val, high_thresh_val);
+    //showWindowAtPosition( windowName + "_canny", gaussienEye, x, y );
+    
+    // polomery
+    int minRadius = cvRound(bestEye.size().width * 0.4);
+    int maxRadius = cvRound(bestEye.size().width * 1);
+    vector<Vec3f> circles;
+    HoughCircles( bestEye, circles, CV_HOUGH_GRADIENT, 1.8, 129, high_thresh_val, 56, minRadius, maxRadius);	//eyeCanny.rows / 8, high_thresh_val
+    
+    cvtColor(bestEye, bestEye, CV_GRAY2BGR);
+    /// Draw the circles detected
+    for( size_t i = 0; i < circles.size(); i++ )
+    {
+        Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+        int radius = cvRound(circles[i][2]);
+        
+        // circle outline
+        circle( bestEye, center, radius, Scalar(0, 255, 0), 0, 8, 0 );
+        
+        circle( bestEye, center, minRadius, Scalar(255, 0, 0));
+        circle( bestEye, center, maxRadius, Scalar(255, 0, 0));
+        
+        
+        Point frameCenter(cvRound(circles[i][0]) + frameX, cvRound(circles[i][1]) + frameY);
+        // circle outline
+        circle( frame, frameCenter, radius, Scalar(0,255,0));
+        circle( frame, frameCenter, minRadius, Scalar(255,0,0));
+        circle( frame, frameCenter, maxRadius, Scalar(255,0,0));
+        
+    }
+    
+    showWindowAtPosition( windowName, bestEye, windowX, windowY + 520);
+    
+    // TODO: Pohrat si s polomery.       Stred vicka na stejne X????
+}
+
 void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
 {
+    // TODO: zakomponovat!!!!!! *********** - zkusit projizdet dokola intensitu a najit tmavou cast
+    Mat intensiveEye = eye.clone();
+    int k = 6;
+    
+    for (int i = 0; i < intensiveEye.cols; i++)
+    {
+        for (int j = 0; j < intensiveEye.rows; j++)
+        {
+            int intensity = intensiveEye.at<uchar>(j, i) * k;
+            if (intensity > 255)
+                intensity = 255;
+            intensiveEye.at<uchar>(j, i) = intensity;
+        }
+    }
+    
+    
     Mat tresholdedEye;
     
     //eye = frame = imread("/Users/jakubvlk/MyShit/BlinkRate/res/pics/gradTestSmallEye.jpg");
@@ -937,6 +1346,9 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
 
 void myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
 {
+    // NAPAD: Zkusit detekovat jenom levy a pravy pulkruh - nebude to brat vicka ********************************************************
+    
+    
     //showWindowAtPosition( windowName + "PRE eye hough", eye, windowX, windowY );
     
 	GaussianBlur( eye, eye, Size(7,7), 0, 0, BORDER_DEFAULT );
@@ -1074,7 +1486,7 @@ void myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int wind
     //cout << "max grad = " << maxGrad << " s rad = " << maxGradRad << endl << endl;
 	
 	// drawing
-	showWindowAtPosition( windowName + "_nova oblast", grad, windowX, windowY + 130);
+	//showWindowAtPosition( windowName + "_nova oblast", grad, windowX, windowY + 130);
 
 	cvtColor(grad, grad, CV_GRAY2BGR);
 
@@ -1092,14 +1504,14 @@ void myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int wind
 	irises.push_back(Vec3f(center.x + frameX, center.y + frameY, maxGradRad));
 
 
-	showWindowAtPosition( windowName + "_nova oblast + cicles", grad, windowX, windowY + 260 );
+	//showWindowAtPosition( windowName + "_nova oblast + cicles", grad, windowX, windowY + 260 );
 
 
 	cvtColor(eye, eye, CV_GRAY2BGR);
 	circle(eye, center, maxGradRad, color);
 	//showWindowAtPosition( windowName + "_nova oblast + eye", eye, windowX, windowY + 260  );
     
-    showWindowAtPosition( windowName + "POST eye hough", eye, windowX, windowY + 390);
+    //showWindowAtPosition( windowName + "POST eye hough", eye, windowX, windowY + 390);
     //findPupil(eye(Rect(center.x - maxGradRad, center.y - maxGradRad, maxGradRad*2, maxGradRad*2)), windowName, windowX, windowY, frameX, frameY);
     //findPupil(frame(Rect(frameX + center.x - maxGradRad, frameY + center.y - maxGradRad, maxGradRad*2, maxGradRad*2)), windowName, windowX, windowY, frameX, frameY);
     //showWindowAtPosition( windowName +  + "eye", frame(Rect(frameX, frameY, eye.size().width, eye.size().height)), windowX, windowY + 650);
