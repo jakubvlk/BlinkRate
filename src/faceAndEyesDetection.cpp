@@ -1528,7 +1528,7 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
         }
     }
     
-    showWindowAtPosition( windowName + "intensiveEye eye hough", intensiveEye, windowX, windowY );
+    //showWindowAtPosition( windowName + "intensiveEye eye hough", intensiveEye, windowX, windowY );
 
 	// Gradient
 	Mat grad_x, grad_y;
@@ -1664,30 +1664,30 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
     //cout << "max grad = " << maxGrad << " s rad = " << maxGradRad << endl << endl;
 	
 	// drawing
-	showWindowAtPosition( windowName + "_nova oblast", grad, windowX, windowY + 130);
+	//showWindowAtPosition( windowName + "_nova oblast", grad, windowX, windowY + 130);
 
-	cvtColor(grad, grad, CV_GRAY2BGR);
+	//cvtColor(grad, grad, CV_GRAY2BGR);
 
-	Scalar color = Scalar(0, 0, 255);
+	//Scalar color = Scalar(0, 0, 255);
 //	int lineLength = 10;
 //	line(grad, Point(center.x - lineLength*0.5, center.y), Point(center.x + lineLength*0.5, center.y), color);
 //	line(grad, Point(center.x, center.y - lineLength*0.5), Point(center.x, center.y + lineLength*0.5), color);
 
 	// min max radius circle
-	circle( grad, newCenter, minRadius, CV_RGB(0, 0, 255));
-	circle( grad, newCenter, maxRadius, CV_RGB(0, 0, 255));
+	//circle( grad, newCenter, minRadius, CV_RGB(0, 0, 255));
+	//circle( grad, newCenter, maxRadius, CV_RGB(0, 0, 255));
 
-	circle( grad, newCenter, maxGradRad, CV_RGB(255, 0, 0));
+	//circle( grad, newCenter, maxGradRad, CV_RGB(255, 0, 0));
 
 	irises.push_back(Vec3f(newCenter.x + frameX, newCenter.y + frameY, maxGradRad));
 
 
-	showWindowAtPosition( windowName + "_nova oblast + cicles", grad, windowX, windowY + 230 );
+	//showWindowAtPosition( windowName + "_nova oblast + cicles", grad, windowX, windowY + 230 );
 
 
-	cvtColor(eye, eye, CV_GRAY2BGR);
-	circle(eye, newCenter, maxGradRad, color);
-	showWindowAtPosition( windowName + "_nova oblast + eye", eye, windowX, windowY + 330  );
+	//cvtColor(eye, eye, CV_GRAY2BGR);
+	//circle(eye, newCenter, maxGradRad, color);
+	//showWindowAtPosition( windowName + "_nova oblast + eye", eye, windowX, windowY + 330  );
     
     //showWindowAtPosition( windowName + "POST eye hough", eye, windowX, windowY + 390);
     //findPupil(eye(Rect(center.x - maxGradRad, center.y - maxGradRad, maxGradRad*2, maxGradRad*2)), windowName, windowX, windowY, frameX, frameY);
