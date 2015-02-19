@@ -37,8 +37,10 @@ vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face);
 Rect pickFace(vector<Rect> faces);
 
 
-void drawIrises();
 void drawEyesCentres();
+void drawPupils();
+void drawIrises();
+
 
 Mat resizeMat(Mat src, int width);
 Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
@@ -47,7 +49,7 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int x, int y, int fr
 Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY);
 
 void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
-void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
+void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY, Point center);
 void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 void blob(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 
@@ -93,6 +95,7 @@ int sliderHCMinDistance, HCMinDistance;
 
 vector<Point> eyesCentres;
 vector<Vec3f> irises;
+vector<Vec3f> pupils;
 
 int main( int argc, const char** argv )
 {
@@ -283,7 +286,7 @@ void detectAndDisplay( Mat frame )
   	Mat frame_gray;
   	eyesCentres.clear();
   	irises.clear();
-
+    pupils.clear();
 
 	// convert from color to grayscale
 	cvtColor( frame, frame_gray, CV_BGR2GRAY );
@@ -335,13 +338,14 @@ void detectAndDisplay( Mat frame )
 			eyeCenter = myHoughCircle(eyeWithoutReflection, 11, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
             //findEyeLids(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 			//FCD(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-            //findPupil(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            findPupil(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
             //blob(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}
 
 		if (drawInFrame)
 		{
-	     	drawEyesCentres();
+	     	//pdrawEyesCentres();
+            drawPupils();
             drawIrises();
 	    }
     }
@@ -687,13 +691,13 @@ Point findEyeCentre ( Mat eye, string windowName, int windowX, int windowY, int 
     
     // 3.1. INTENSITY SCALING 4~8
     Mat intensiveEye = blurredEye.clone();
-    int k = 5;
+    int intesMul = 5;
     
     for (int i = 0; i < intensiveEye.cols; i++)
     {
         for (int j = 0; j < intensiveEye.rows; j++)
         {
-            int intensity = intensiveEye.at<uchar>(j, i) * k;
+            int intensity = intensiveEye.at<uchar>(j, i) * intesMul;
             if (intensity > 255)
                 intensity = 255;
             intensiveEye.at<uchar>(j, i) = intensity;
@@ -1469,36 +1473,87 @@ void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frame
     // TODO: Pohrat si s polomery.       Stred vicka na stejne X????
 }
 
-void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
+void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
 {
-    // TODO: zakomponovat!!!!!! *********** - zkusit projizdet dokola intensitu a najit tmavou cast
+    showWindowAtPosition( windowName + " eye", eye, windowX, windowY + 0);
+    
     Mat intensiveEye = eye.clone();
-    int k = 6;
+    int intesMul = 6;
     
     for (int i = 0; i < intensiveEye.cols; i++)
     {
         for (int j = 0; j < intensiveEye.rows; j++)
         {
-            int intensity = intensiveEye.at<uchar>(j, i) * k;
+            int intensity = intensiveEye.at<uchar>(j, i) * intesMul;
             if (intensity > 255)
                 intensity = 255;
             intensiveEye.at<uchar>(j, i) = intensity;
         }
     }
     
+    showWindowAtPosition( windowName + " intensive eye", intensiveEye, windowX, windowY + 120);
     
-    Mat tresholdedEye;
+    int minRadius = 3;
+    int maxRadius = 7;
     
-    //eye = frame = imread("/Users/jakubvlk/MyShit/BlinkRate/res/pics/gradTestSmallEye.jpg");
-    cvtColor( eye, eye, CV_BGR2GRAY );
+    int intensitiesCount = maxRadius - minRadius + 1;
+    double intensities[intensitiesCount];
+    for (int i = 0; i < intensitiesCount; i++)
+    {
+        intensities[i] = 0;
+    }
     
-    // contrast adjustment using the image's histogram
-    equalizeHist( eye, eye );
+    int i = 0;
+    int stepsCount = 0;
+    int totalIntensity = 0;
+    for (int r = minRadius; r <= maxRadius; ++r)
+    {
+        double step = 2* M_PI / (r*2);
+        
+        
+        for(double theta = 0;  theta < 2 * M_PI;  theta += step)
+        {
+            int circleX = lround(center.x + r * cos(theta));
+            int circleY = lround(center.y - r * sin(theta));
+            
+            int pixelIntens = intensiveEye.at<uchar>(circleY, circleX);
+            if (pixelIntens < 250)
+            {
+                totalIntensity += pixelIntens;
+                
+                //cout << pixelIntens << endl;
+                stepsCount++;
+            }
+        }
+        
+        if (stepsCount == 0)
+            stepsCount = 1;
+        intensities[i] = totalIntensity / (r * stepsCount);
+        
+        cout << intensities[i] << endl;
+        
+        i++;
+    }
+    cout << endl;
     
-    threshold( eye, tresholdedEye, HCParam1, 255, CV_THRESH_BINARY);
+    double minIntens = 0;
+    double minIntensRad = 0;
+    for (i = 0; i < intensitiesCount; i++)
+    {
+        if (intensities[i] > minIntens)
+        {
+            minIntens = intensities[i];
+            minIntensRad = i;
+        }
+    }
     
-    //showWindowAtPosition( windowName + " eye", eye, windowX, windowY + 520);
-    //showWindowAtPosition( windowName + " tresh", tresholdedEye, windowX, windowY + 600);
+    minIntensRad += minRadius;
+    
+    pupils.push_back(Vec3f(center.x + frameX, center.y+ frameY, minIntensRad));
+    
+    cvtColor(intensiveEye, intensiveEye, CV_GRAY2BGR);
+    circle(intensiveEye, center, minIntensRad, CV_RGB(0, 255, 0));
+    showWindowAtPosition( windowName + " pupil", intensiveEye, windowX, windowY + 240);
 }
 
 Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
@@ -1515,13 +1570,13 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
 	GaussianBlur( eye, gaussEye, Size(5,5), 0, 0, BORDER_DEFAULT );
     
     Mat intensiveEye = gaussEye.clone();
-    int k = 4;
+    int intesMul = 4;
     
     for (int i = 0; i < intensiveEye.cols; i++)
     {
         for (int j = 0; j < intensiveEye.rows; j++)
         {
-            int intensity = intensiveEye.at<uchar>(j, i) * k;
+            int intensity = intensiveEye.at<uchar>(j, i) * intesMul;
             if (intensity > 255)
                 intensity = 255;
             intensiveEye.at<uchar>(j, i) = intensity;
@@ -1720,6 +1775,20 @@ void drawIrises()
 	}
 }
 
+void drawPupils()
+{
+    for( int i = 0; i < pupils.size(); i++ )
+    {
+        int radius = cvRound(pupils[i][2]);
+        
+        Point frameCenter( cvRound(pupils[i][0]), cvRound(pupils[i][1]) );
+        // circle outline
+        Scalar color = CV_RGB(0, 255, 0);
+        
+        circle( frame, frameCenter, radius, color);
+    }
+}
+
 void drawEyesCentres()
 {
 	for( size_t i = 0; i < eyesCentres.size(); i++ )
@@ -1727,10 +1796,12 @@ void drawEyesCentres()
 		// circle outline
 		Scalar color = Scalar(0, 0, 255);
 
-		//circle( frame, eyesCentres[i], radius, color, 3);
-		int lineLength = 6;
-		line(frame, Point(eyesCentres[i].x - lineLength*0.5, eyesCentres[i].y), Point(eyesCentres[i].x + lineLength*0.5, eyesCentres[i].y), color);
-		line(frame, Point(eyesCentres[i].x, eyesCentres[i].y - lineLength*0.5), Point(eyesCentres[i].x, eyesCentres[i].y + lineLength*0.5), color);
+//		//circle( frame, eyesCentres[i], radius, color, 3);
+//		int lineLength = 6;
+//		line(frame, Point(eyesCentres[i].x - lineLength*0.5, eyesCentres[i].y), Point(eyesCentres[i].x + lineLength*0.5, eyesCentres[i].y), color);
+//		line(frame, Point(eyesCentres[i].x, eyesCentres[i].y - lineLength*0.5), Point(eyesCentres[i].x, eyesCentres[i].y + lineLength*0.5), color);
+        
+        circle(frame, eyesCentres[i], 1, color);
 	}
 }
 
