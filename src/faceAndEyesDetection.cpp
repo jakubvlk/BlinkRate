@@ -8,7 +8,7 @@ TODO: 1) Podivat se jak detekuji oci a a pokud nedetekuji kazde vzlast, tak udel
 	  // mrl.cs.vsb.cz/eyes/dataset/video
 */
 
-#define TIME_MEASURING  0
+#define TIME_MEASURING  1
 
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
@@ -1136,8 +1136,38 @@ Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int 
 	return reparedEye;
 }
 
+void testPossibleCentersFormula(int x, int y, unsigned char weight,double gx, double gy, cv::Mat &out) {
+    // for all possible centers
+    int tmpC = 0;
+    for (int cy = 0; cy < out.rows; ++cy) {
+        double *Or = out.ptr<double>(cy);
+        for (int cx = 0; cx < out.cols; ++cx) {
+            if (x == cx && y == cy) {
+                continue;
+            }
+            // create a vector from the possible center to the gradient origin
+            double dx = x - cx;
+            double dy = y - cy;
+            // normalize d
+            double magnitude = sqrt((dx * dx) + (dy * dy));
+            dx = dx / magnitude;
+            dy = dy / magnitude;
+            double dotProduct = dx*gx + dy*gy;
+            dotProduct = std::max(0.0,dotProduct);
+            // square and multiply by the weight
+                Or[cx] += dotProduct * dotProduct;
+            
+            tmpC++;
+        }
+    }
+    
+    //cout << tmpC << endl;
+}
+
 Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
 {
+
+    
     showWindowAtPosition( windowName + " orig eye", eye, windowX, windowY);
     
     Mat gaussEye;
@@ -1159,7 +1189,7 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
     }
     
     Mat grad_x, grad_y;
-    Mat abs_grad_x, abs_grad_y, grad;
+    //Mat abs_grad_x, abs_grad_y, grad;
     
     int scale = 1;
     int delta = 0;
@@ -1170,17 +1200,17 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
     /// Gradient Y
     Sobel( intensiveEye, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
     
-    convertScaleAbs( grad_x, abs_grad_x );
-    convertScaleAbs( grad_y, abs_grad_y );
+//    convertScaleAbs( grad_x, abs_grad_x );
+//    convertScaleAbs( grad_y, abs_grad_y );
     
-    addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
+//    addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
     
-    showWindowAtPosition( windowName + " grad eye", grad, windowX, windowY + 130);
+//    showWindowAtPosition( windowName + " grad eye", grad, windowX, windowY + 130);
 
-    Mat direction;
-    phase(grad_x, grad_y, direction, true);
+//    Mat direction;
+//    phase(grad_x, grad_y, direction, true);
     
-    double m_pi180 = M_PI / 180;
+//    double m_pi180 = M_PI / 180;
     
     double dotProducts[eye.rows][eye.cols];
     for (int y = 0; y < eye.rows; y++)
@@ -1191,6 +1221,12 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
         }
     }
     
+    int gradientsCount = 0;
+    
+/*
+#if TIME_MEASURING
+    int64 e1 = getTickCount();
+#endif
     int gradientsCount = 0;
     for (int y = 0; y < eye.rows; y++)
     {
@@ -1214,6 +1250,7 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
                         
                         //normalize d
                         double dMagnitude = sqrt( pow(d.x, 2) + pow(d.y, 2) );
+
                         d = Point2d(d.x / dMagnitude, d.y / dMagnitude);
                         
                         double dotProduct = d.dot(g);
@@ -1228,8 +1265,82 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
         }
     }
     
+#if TIME_MEASURING
+    double time = (getTickCount() - e1)/ getTickFrequency();
+    cout << "my time = " << time << endl;
+#endif
+*/
+    
+    //my NEW
+#if TIME_MEASURING
+    int64 e1 = getTickCount();
+#endif
+    
+    for (int y = 0; y < eye.rows; ++y)
+    {
+        const float *Xr = grad_x.ptr<float>(y);
+        const float *Yr = grad_y.ptr<float>(y);
+        
+        for (int x = 0; x < eye.cols; ++x)
+        {
+            float gX = Xr[x];
+            float gY = Yr[x];
+            if (gX == 0.f && gY == 0.f)
+            {
+                continue;
+            }
+            
+            
+            float gMag = sqrt( gX * gX + gY*gY );
+//            Point2f g = Point2f(gX / gMag, gY / gMag);
+            
+            float gx = gX / gMag, gy = gY / gMag;
+            
+            for (int cy = 0; cy < eye.rows; cy++)
+            {
+                for (int cx = 0; cx < eye.cols; cx++)
+                {
+                    if (x == cx && y == cy)
+                    {
+                        continue;
+                    }
+                    
+                    float dx = x - cx, dy = y - cy;
+                
+                    
+//                    Point2f d = Point2f(x - cx, y - cy);
+//                    
+//                    //normalize d
+                    float dMagnitude = sqrt( dx * dx + dy * dy );
+//
+//                    d = Point2f(d.x / dMagnitude, d.y / dMagnitude);
+                    dx = dx / dMagnitude;
+                    dy = dy / dMagnitude;
+//                    
+//                    float dotProduct = d.dot(g);
+                    float dotProduct = dx*gx + dy*gy;
+//
+//                    //dotProduct = max(0.0, dotProduct);    // at to neni zaporne
+//                    
+                    if (dotProduct < 0.f)
+                        dotProduct = 0.f;
+                    
+                    dotProducts[cy][cx] += dotProduct*dotProduct;// pow(dotProduct, 2);
+                    gradientsCount++;
+                }
+            }
+            
+            
+        }
+    }
+    
+#if TIME_MEASURING
+    double time = (getTickCount() - e1)/ getTickFrequency();
+    cout << "my NEW time = " << time << endl;
+#endif
+    
     Mat final(eye.size(), CV_64F);
-    double numGradients = gradientsCount;
+//double numGradients = gradientsCount;
     for (int y = 0; y < eye.rows; y++)
     {
         for (int x = 0; x < eye.cols; x++)
@@ -1247,6 +1358,8 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
     double maxVal;
     minMaxLoc(final, NULL,&maxVal,NULL,&maxP);
     cout << maxP << endl;
+    
+
     
     cvtColor(eye, eye, CV_GRAY2BGR);
     circle(eye, maxP, 1, Scalar(0,0, 255));
