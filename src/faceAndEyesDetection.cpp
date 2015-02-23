@@ -49,6 +49,7 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int x, int y, int fr
 Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY);
 
 void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
+Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY, Point center);
 void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 void blob(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
@@ -127,7 +128,7 @@ int main( int argc, const char** argv )
 	else
 	{
 		frame = imread(file);
-        frame = resizeMat(frame, 640);
+        //frame = resizeMat(frame, 640);
         
 		originalFrame = frame.clone();
 		detectAndDisplay(frame);
@@ -333,26 +334,30 @@ void detectAndDisplay( Mat frame )
 			Mat eyeWithoutReflection = removeReflections(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
 //			Point eyeCenter = setEyesCentres(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-            Point eyeCenter = findEyeCentre(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            //Point eyeCenter = findEyeCentre(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            accurateEyeCentreLocalisationByMeansOfGradients(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
-			eyeCenter = myHoughCircle(eyeWithoutReflection, 11, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+			//eyeCenter = myHoughCircle(eyeWithoutReflection, 11, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+            //findPupil(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+
             //findEyeLids(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 			//FCD(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-            findPupil(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
             //blob(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}
 
 		if (drawInFrame)
 		{
 	     	//pdrawEyesCentres();
-            drawPupils();
-            drawIrises();
+            //drawPupils();
+            //drawIrises();
+ 
 	    }
     }
 
     //FCD(frame_gray, "", 820 + 220 , 0, 0, 0);
     //findPupil(frame_gray, "", 820 + 220 , 0, 0, 0);
-//    blob(frame_gray, "", 820 + 220 , 0, 0, 0);
+    //accurateEyeCentreLocalisationByMeansOfGradients(frame_gray, "", 820 + 220 , 0, 0, 0);
+
 
 
   	imshow( window_name, frame );
@@ -1131,6 +1136,131 @@ Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int 
 	return reparedEye;
 }
 
+Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
+{
+    showWindowAtPosition( windowName + " orig eye", eye, windowX, windowY);
+    
+    Mat gaussEye;
+    
+    GaussianBlur( eye, gaussEye, Size(3,3), 0, 0, BORDER_DEFAULT );
+    
+    Mat intensiveEye = gaussEye.clone();
+    int intesMul = 6;
+    
+    for (int i = 0; i < intensiveEye.cols; i++)
+    {
+        for (int j = 0; j < intensiveEye.rows; j++)
+        {
+            int intensity = intensiveEye.at<uchar>(j, i) * intesMul;
+            if (intensity > 255)
+                intensity = 255;
+            intensiveEye.at<uchar>(j, i) = intensity;
+        }
+    }
+    
+    Mat grad_x, grad_y;
+    Mat abs_grad_x, abs_grad_y, grad;
+    
+    int scale = 1;
+    int delta = 0;
+    int ddepth = CV_32F;
+    
+    /// Gradient X
+    Sobel( intensiveEye, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+    /// Gradient Y
+    Sobel( intensiveEye, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+    
+    convertScaleAbs( grad_x, abs_grad_x );
+    convertScaleAbs( grad_y, abs_grad_y );
+    
+    addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
+    
+    showWindowAtPosition( windowName + " grad eye", grad, windowX, windowY + 130);
+
+    Mat direction;
+    phase(grad_x, grad_y, direction, true);
+    
+    double m_pi180 = M_PI / 180;
+    
+    double dotProducts[eye.rows][eye.cols];
+    for (int y = 0; y < eye.rows; y++)
+    {
+        for (int x = 0; x < eye.cols; x++)
+        {
+            dotProducts[y][x] = 0;
+        }
+    }
+    
+    int gradientsCount = 0;
+    for (int y = 0; y < eye.rows; y++)
+    {
+        for (int x = 0; x < eye.cols; x++)
+        {
+            double rad = direction.at<float>(y, x) * m_pi180;
+            Point2d g = Point2f(cos(rad),sin(rad));
+            
+            if (grad.at<uchar>(y, x) > 0)
+            {
+                for (int cy = 0; cy < eye.rows; cy++)
+                {
+                    for (int cx = 0; cx < eye.cols; cx++)
+                    {
+                        if (x == cx && y == cy)
+                        {
+                            continue;
+                        }
+                        
+                        Point2d d = Point2d(x - cx, y - cy);
+                        
+                        //normalize d
+                        double dMagnitude = sqrt( pow(d.x, 2) + pow(d.y, 2) );
+                        d = Point2d(d.x / dMagnitude, d.y / dMagnitude);
+                        
+                        double dotProduct = d.dot(g);
+                        
+                        dotProduct = max(0.0, dotProduct);    // at to neni zaporne
+                        
+                        dotProducts[cy][cx] += pow(dotProduct, 2);
+                        gradientsCount++;
+                    }
+                }
+            }
+        }
+    }
+    
+    Mat final(eye.size(), CV_64F);
+    double numGradients = gradientsCount;
+    for (int y = 0; y < eye.rows; y++)
+    {
+        for (int x = 0; x < eye.cols; x++)
+        {
+            //dotProducts[y][x] /= numGradients;
+            final.at<double>(y, x) = dotProducts[y][x];
+            
+            //cout << dotProducts[y][x] << ", ";
+        }
+        
+        //cout << endl;
+    }
+    
+    cv::Point maxP;
+    double maxVal;
+    minMaxLoc(final, NULL,&maxVal,NULL,&maxP);
+    cout << maxP << endl;
+    
+    cvtColor(eye, eye, CV_GRAY2BGR);
+    circle(eye, maxP, 1, Scalar(0,0, 255));
+    
+    // kresleni do framu
+    Scalar color = CV_RGB(255, 0, 0);
+    int lineLength = 6;
+    line(frame, Point(frameX + maxP.x - lineLength*0.5, frameY + maxP.y), Point(frameX + maxP.x + lineLength*0.5, frameY + maxP.y), color);
+    line(frame, Point(frameX + maxP.x, frameY + maxP.y - lineLength*0.5), Point(frameX + maxP.x, frameY + maxP.y + lineLength*0.5), color);
+    
+    showWindowAtPosition( windowName + " final eye", eye, windowX, windowY + 230);
+    showWindowAtPosition( windowName + " final", final, windowX, windowY + 330);
+}
+
 Mat mat2gray(const cv::Mat& src)
 {
     Mat dst;
@@ -1475,7 +1605,7 @@ void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frame
 
 void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
 {
-    showWindowAtPosition( windowName + " eye", eye, windowX, windowY + 0);
+    //showWindowAtPosition( windowName + " eye", eye, windowX, windowY + 0);
     
     Mat intensiveEye = eye.clone();
     int intesMul = 6;
@@ -1491,7 +1621,7 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
         }
     }
     
-    showWindowAtPosition( windowName + " intensive eye", intensiveEye, windowX, windowY + 120);
+    //showWindowAtPosition( windowName + " intensive eye", intensiveEye, windowX, windowY + 120);
     
     int minRadius = 3;
     int maxRadius = 7;
@@ -1505,13 +1635,14 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
     
     int i = 0;
     int stepsCount = 0;
-    int totalIntensity = 0;
+    double totalIntensity = 0;
     for (int r = minRadius; r <= maxRadius; ++r)
     {
         double step = 2* M_PI / (r*2);
         
         
-        for(double theta = 0;  theta < 2 * M_PI;  theta += step)
+        //for(double theta = 0;  theta < 2 * M_PI;  theta += step)
+        for(double theta = M_PI;  theta <= 2 * M_PI;  theta += step)    // Spodni oblouk - neni stineny rasami
         {
             int circleX = lround(center.x + r * cos(theta));
             int circleY = lround(center.y - r * sin(theta));
@@ -1530,11 +1661,11 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
             stepsCount = 1;
         intensities[i] = totalIntensity / (r * stepsCount);
         
-        cout << intensities[i] << endl;
+        //cout << intensities[i] << endl;
         
         i++;
     }
-    cout << endl;
+    //cout << endl;
     
     double minIntens = 0;
     double minIntensRad = 0;
@@ -1553,7 +1684,7 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
     
     cvtColor(intensiveEye, intensiveEye, CV_GRAY2BGR);
     circle(intensiveEye, center, minIntensRad, CV_RGB(0, 255, 0));
-    showWindowAtPosition( windowName + " pupil", intensiveEye, windowX, windowY + 240);
+    //showWindowAtPosition( windowName + " pupil", intensiveEye, windowX, windowY + 240);
 }
 
 Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
@@ -1562,7 +1693,7 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
      int64 e1 = getTickCount();
 #endif
     
-    // NAPAD: Zkusit detekovat jenom levy a pravy pulkruh - nebude to brat vicka ********************************************************
+    // NAPAD: Zkusit detekovat jenom levy a pravy "pulkruh" - nebude to brat vicka ********************************************************
     
     //showWindowAtPosition( windowName + "PRE eye hough", eye, windowX, windowY );
     
@@ -1650,6 +1781,8 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
         
     }
 
+    double m_pi180 = M_PI / 180;
+    //Mat tmpMat = grad.clone(); //Mat::zeros(grad.size(), CV_8U);
 	int i = 0;
 	for (int x = xMin; x <= xMax; ++x)
 	{		
@@ -1662,15 +1795,27 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
 				double step = 2* M_PI / (r*2);
 
 				int stepsCount = 0;
-                for(double theta = 0;  theta < 2 * M_PI;  theta += step)
+                //for(double theta = 0;  theta < 2 * M_PI;  theta += step)
+                for(double theta = 120 * m_pi180;  theta <= 240 * m_pi180;  theta += step)
 				{
 					int circleX = lround(x + r * cos(theta));
 					int circleY = lround(y - r * sin(theta));
                     
 					gradients[i][j][k] += grad.at<uchar>(circleY, circleX);
+                    //tmpMat.at<uchar>(circleY, circleX) = 127;
                     
 					stepsCount++;
 				}
+                for(double theta = -60 * m_pi180;  theta <= 60 * m_pi180;  theta += step)
+                {
+                    int circleX = lround(x + r * cos(theta));
+                    int circleY = lround(y - r * sin(theta));
+                    
+                    gradients[i][j][k] += grad.at<uchar>(circleY, circleX);
+                    //tmpMat.at<uchar>(circleY, circleX) = 127;
+                    
+                    stepsCount++;
+                }
                 
                 gradients[i][j][k] /= stepsCount;
                 
@@ -1715,11 +1860,13 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
 	
 
 	maxGradRad += minRadius;
+    
+    //showWindowAtPosition( windowName + " TMP", tmpMat, windowX, windowY + 130);
 
     //cout << "max grad = " << maxGrad << " s rad = " << maxGradRad << endl << endl;
 	
 	// drawing
-	//showWindowAtPosition( windowName + "_nova oblast", grad, windowX, windowY + 130);
+	//showWindowAtPosition( windowName + "_nova oblast", grad, windowX, windowY + 230);
 
 	//cvtColor(grad, grad, CV_GRAY2BGR);
 
