@@ -8,7 +8,7 @@ TODO: 1) Podivat se jak detekuji oci a a pokud nedetekuji kazde vzlast, tak udel
 	  // mrl.cs.vsb.cz/eyes/dataset/video
 */
 
-#define TIME_MEASURING  1
+#define TIME_MEASURING  0
 
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
@@ -342,7 +342,7 @@ void detectAndDisplay( Mat frame )
 
 			//eyeCenter = myHoughCircle(eyeWithoutReflection, 11, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
             myHoughCircle(eyeWithoutReflection, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
-            //findPupil(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+            findPupil(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
 //            findEyeCorners(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             //VPF_eyelids(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             
@@ -355,7 +355,7 @@ void detectAndDisplay( Mat frame )
 		if (drawInFrame)
 		{
 	     	drawEyesCentres();
-            //drawPupils();
+            drawPupils();
             //drawIrises();
  
 	    }
@@ -1248,7 +1248,7 @@ Point setEyesCentres ( Mat eye, string windowName, int windowX, int windowY, int
 
 Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int frameY)
 {
-    showWindowAtPosition( windowName + " eye refl", eye, x, y);
+//    showWindowAtPosition( windowName + " eye refl", eye, x, y);
     
 	Mat gaussEye, binaryEye;
 
@@ -1794,15 +1794,19 @@ void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frame
     
     showWindowAtPosition( windowName, bestEye, windowX, windowY + 520);
     
-    // TODO: Pohrat si s polomery.       Stred vicka na stejne X????
+    // TODO: Pohrat si s polomery.
 }
 
 void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
 {
-    //showWindowAtPosition( windowName + " eye", eye, windowX, windowY + 0);
+    showWindowAtPosition( windowName + " eye", eye, windowX, windowY + 0);
     
-    Mat intensiveEye = eye.clone();
-    int intesMul = 6;
+    Mat gaussEye;    
+    GaussianBlur( eye, gaussEye, Size(3,3), 0, 0, BORDER_DEFAULT );
+    
+    Mat intensiveEye = gaussEye.clone();
+    //Mat intensiveEye = eye.clone();
+    const int intesMul = 6;
     
     for (int i = 0; i < intensiveEye.cols; i++)
     {
@@ -1815,7 +1819,7 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
         }
     }
     
-    //showWindowAtPosition( windowName + " intensive eye", intensiveEye, windowX, windowY + 120);
+    showWindowAtPosition( windowName + " intensive eye", intensiveEye, windowX, windowY + 120);
     
     int minRadius = 3;
     int maxRadius = 7;
@@ -1834,9 +1838,8 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
     {
         double step = 2* M_PI / (r*2);
         
-        
-        //for(double theta = 0;  theta < 2 * M_PI;  theta += step)
-        for(double theta = M_PI;  theta <= 2 * M_PI;  theta += step)    // Spodni oblouk - neni stineny rasami
+        for(double theta = 0;  theta < 2 * M_PI;  theta += step)
+        //for(double theta = M_PI;  theta <= 2 * M_PI;  theta += step)    // Spodni oblouk - neni stineny rasami
         {
             int circleX = lround(center.x + r * cos(theta));
             int circleY = lround(center.y - r * sin(theta));
@@ -1878,7 +1881,7 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
     
     cvtColor(intensiveEye, intensiveEye, CV_GRAY2BGR);
     circle(intensiveEye, center, minIntensRad, CV_RGB(0, 255, 0));
-    //showWindowAtPosition( windowName + " pupil", intensiveEye, windowX, windowY + 240);
+    showWindowAtPosition( windowName + " pupil", intensiveEye, windowX, windowY + 240);
 }
 
 Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
@@ -1887,7 +1890,7 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
      int64 e1 = getTickCount();
 #endif
     
-    showWindowAtPosition( windowName + "PRE eye hough", eye, windowX, windowY );
+    //showWindowAtPosition( windowName + "PRE eye hough", eye, windowX, windowY );
     
     Mat gaussEye;
 	GaussianBlur( eye, gaussEye, Size(5,5), 0, 0, BORDER_DEFAULT );
@@ -1925,12 +1928,12 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
 	convertScaleAbs( grad_y, abs_grad_y );
     
     addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
-    showWindowAtPosition( windowName + "grad", grad, windowX, windowY + 120);
+    //showWindowAtPosition( windowName + "grad", grad, windowX, windowY + 120);
 
     
     // Je to lepsi???????????????
     grad = mat2gray(abs_grad_x);
-    showWindowAtPosition( windowName + "grad X", grad, windowX, windowY + 240);
+    //showWindowAtPosition( windowName + "grad X", grad, windowX, windowY + 240);
 
 
 	// polomery
@@ -2065,7 +2068,7 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
 
 	//cvtColor(grad, grad, CV_GRAY2BGR);
 
-	Scalar color = Scalar(0, 0, 255);
+//	Scalar color = Scalar(0, 0, 255);
 //	int lineLength = 10;
 //	line(grad, Point(center.x - lineLength*0.5, center.y), Point(center.x + lineLength*0.5, center.y), color);
 //	line(grad, Point(center.x, center.y - lineLength*0.5), Point(center.x, center.y + lineLength*0.5), color);
@@ -2082,9 +2085,9 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
 	//showWindowAtPosition( windowName + "_nova oblast + cicles", grad, windowX, windowY + 230 );
 
 
-	cvtColor(eye, eye, CV_GRAY2BGR);
-	circle(eye, newCenter, maxGradRad, color);
-	showWindowAtPosition( windowName + "_nova oblast + eye", eye, windowX, windowY + 330  );
+//	cvtColor(eye, eye, CV_GRAY2BGR);
+//	circle(eye, newCenter, maxGradRad, color);
+//	showWindowAtPosition( windowName + "_nova oblast + eye", eye, windowX, windowY + 330  );
     
     //showWindowAtPosition( windowName + "POST eye hough", eye, windowX, windowY + 390);
     //findPupil(eye(Rect(center.x - maxGradRad, center.y - maxGradRad, maxGradRad*2, maxGradRad*2)), windowName, windowX, windowY, frameX, frameY);
