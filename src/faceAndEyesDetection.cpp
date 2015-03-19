@@ -77,7 +77,8 @@ CascadeClassifier eyes_cascade;
 string window_name = "Capture - Face detection";
 RNG rng(12345);
 
-string file = "lena.png";
+string file = "../../../res/pics/lena.png";
+//string file = "../res/pics/lena.png";
 bool useVideo = false, useCamera = false, stepFrame = false, showWindow = false;
 bool drawInFrame = true;
 Mat frame, originalFrame;
