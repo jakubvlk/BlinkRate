@@ -1,14 +1,4 @@
-// Hough transform - na rozpoznavani usecek a dalsich vecich, jako treba kruznic (kruhovych oblouku)
-/*
-TODO: 1) Podivat se jak detekuji oci a a pokud nedetekuji kazde vzlast, tak udelat trenovani.
-			- pozitivni / negativni vzorky
-	  2) Rozjet detekci vicek Houghovou trans. nebo prijit s jinym konceptem
-	  3) Rohovka a duhovka - asi zase Houghova trans., takze by se to dalo vzit s vickem
-
-	  // mrl.cs.vsb.cz/eyes/dataset/video
-*/
-
-#define TIME_MEASURING  0
+#define TIME_MEASURING  1
 
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
@@ -347,16 +337,16 @@ void detectAndDisplay( Mat frame )
 //            findEyeCorners(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             //VPF_eyelids(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             
-
-            //findEyeLids(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            
+            findEyeLids(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 			//FCD(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             //blob(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}
 
 		if (drawInFrame)
 		{
-	     	drawEyesCentres();
-            drawPupils();
+	     	//drawEyesCentres();
+           // drawPupils();
             //drawIrises();
  
 	    }
@@ -1281,8 +1271,8 @@ Mat removeReflections(Mat eye, string windowName, int x, int y, int frameX, int 
 	inpaint(eye, binaryEye, reparedEye, 3, INPAINT_TELEA);
 
 	// Draw
-	//showWindowAtPosition( windowName + " - grad", grad, x - 200, y + 260);
-	//showWindowAtPosition( windowName + " - bez odlesku", reparedEye, x - 200, y + 390);
+//	showWindowAtPosition( windowName + " - grad", grad, x, y + 260);
+//	showWindowAtPosition( windowName + " - bez odlesku", reparedEye, x, y + 390);
     //showWindowAtPosition( windowName + " - grad x", mat2gray(grad_x), x - 200, y + 390);
     //showWindowAtPosition( windowName + " - grad y", mat2gray(grad_y), x - 200, y + 490);
 	
@@ -1725,82 +1715,110 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
 
 void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
 {
-    showWindowAtPosition( windowName + "PRE eye lids", eye, windowX, windowY );
+#if TIME_MEASURING
+    double time_time;
+    int64 time_wholeFunc = getTickCount();
+#endif
     
-    GaussianBlur( eye, eye, Size(7,7), 0, 0, BORDER_DEFAULT );
+    Mat tmp = eye.clone();
     
-    // Gradient
-    Mat grad_x, grad_y;
-    Mat abs_grad_x, abs_grad_y, grad;
+    // blur
+    //medianBlur(eye, eye, 5); //5
+    GaussianBlur( eye, eye, Size(3,3), 0, 0, BORDER_DEFAULT );
     
-    int scale = 1;
-    int delta = 0;
-    int ddepth = CV_16S;
-    
-    /// Gradient X
-    Sobel( eye, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
-    /// Gradient Y
-    Sobel( eye, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
-    
-    convertScaleAbs( grad_x, abs_grad_x );
-    convertScaleAbs( grad_y, abs_grad_y );
-    
-    addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
-    
-    // Je to lepsi???????????????
-    //grad = mat2gray(abs_grad_x);
-    
-//    showWindowAtPosition( windowName + "grad", grad, windowX, windowY + 130 );
-    showWindowAtPosition( windowName + "grad Y", abs_grad_y, windowX, windowY + 260);
-//    showWindowAtPosition( windowName + "grad x", abs_grad_x, windowX, windowY + 390);
-    
-    Mat bestEye = abs_grad_y.clone();
-    Mat uselessMat;
-    double otsu_thresh_val = threshold( bestEye, uselessMat, 0, 255, CV_THRESH_BINARY | CV_THRESH_OTSU );
-    double high_thresh_val  = otsu_thresh_val;
-    double lower_thresh_val = otsu_thresh_val * 0.5;
-    //cout << "Computed tresholds = " << high_thresh_val << ", " << lower_thresh_val << endl;	//140,70
-    
-    // Mat eyeCanny;
-    //Canny(gaussienEye, gaussienEye, lower_thresh_val, high_thresh_val);
-    //showWindowAtPosition( windowName + "_canny", gaussienEye, x, y );
-    
-    // polomery
-    int minRadius = cvRound(bestEye.size().width * 0.4);
-    int maxRadius = cvRound(bestEye.size().width * 1);
-    vector<Vec3f> circles;
-    HoughCircles( bestEye, circles, CV_HOUGH_GRADIENT, 1.8, 129, high_thresh_val, 56, minRadius, maxRadius);	//eyeCanny.rows / 8, high_thresh_val
-    
-    cvtColor(bestEye, bestEye, CV_GRAY2BGR);
-    /// Draw the circles detected
-    for( size_t i = 0; i < circles.size(); i++ )
+    for(int thresh = 0; thresh < 255; thresh+= 3)
     {
-        Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
-        int radius = cvRound(circles[i][2]);
+        Mat threshold_output;
+        //Mat srcOutput = eye.clone();
+        vector<vector<Point> > contours;
+        vector<Vec4i> hierarchy;
+        bool end = false;
         
-        // circle outline
-        circle( bestEye, center, radius, Scalar(0, 255, 0), 0, 8, 0 );
+        /// Detect edges using Threshold
+        threshold( eye, threshold_output, thresh, 255, THRESH_BINARY_INV );
+        /// Find contours
+        findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
         
-        circle( bestEye, center, minRadius, Scalar(255, 0, 0));
-        circle( bestEye, center, maxRadius, Scalar(255, 0, 0));
+        /// Find the rotated rectangles and ellipses for each contour
+        vector<RotatedRect> minRect( contours.size() );
+        //vector<RotatedRect> minEllipse( contours.size() );
         
+        //cout << "xxxxxxx" << endl;
+        for( size_t i = 0; i < contours.size(); i++ )
+        {
+            minRect[i] = minAreaRect( Mat(contours[i]) );
+            /*if( contours[i].size() > 5 )
+            {
+                
+                minEllipse[i] = fitEllipse( Mat(contours[i]) );
+                //cout << minEllipse[i].angle << endl;
+            }*/
+        }
         
-        Point frameCenter(cvRound(circles[i][0]) + frameX, cvRound(circles[i][1]) + frameY);
-        // circle outline
-        circle( frame, frameCenter, radius, Scalar(0,255,0));
-        circle( frame, frameCenter, minRadius, Scalar(255,0,0));
-        circle( frame, frameCenter, maxRadius, Scalar(255,0,0));
+        /// Draw contours + rotated rects + ellipses
+        //Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
+        cout << "contours.size() " << contours.size() << endl;
+        for( size_t i = 0; i< contours.size(); i++ )
+        {
+            //Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+            // contour
+            //drawContours( drawing, contours, (int)i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+            // ellipse
+            //ellipse( drawing, minEllipse[i], color, 2, 8 );
+            
+            // rotated rectangle
+            cout << "minRect[i].size().width " << minRect[i].size.width << endl;
+            cout << "minRect[i].size().height " << minRect[i].size.height << endl;
+            
+            float pomer = 0.f;
+            if (minRect[i].size.width > minRect[i].size.height)
+                pomer = minRect[i].size.width / minRect[i].size.height;
+            if (minRect[i].size.height > minRect[i].size.width)
+                pomer = minRect[i].size.height / minRect[i].size.width;
+            cout << "pomer: " << pomer << endl;
+            
+            if ( (pomer > 1.6) && ((minRect[i].size.width > eye.size().width * 0.5) || (minRect[i].size.height > eye.size().height * 0.5) ) && minRect[i].center.y > eye.size().height * 0.4 && minRect[i].center.y < eye.size().height * 0.6 )
+            {
+                //drawContours( srcOutput, contours, (int)i, color, 2, 8, vector<Vec4i>(), 0, Point() );
+                //namedWindow( "srcOutput", WINDOW_AUTOSIZE );
+                //imshow( "srcOutput", srcOutput );
+                
+                //ellipse( tmp, minEllipse[i], color, 2, 8 );
+                
+                Point leftTopPoint = Point(minRect[i].center.x - 0.35f * eye.size().width, minRect[i].center.y - 0.5f * minRect[i].size.height);
+                Point rightTopPoint = Point(minRect[i].center.x + 0.35f * eye.size().width, minRect[i].center.y - 0.5f * minRect[i].size.height);
+                line( tmp, leftTopPoint, rightTopPoint, CV_RGB(255, 255, 255), 2, 8 );
+                
+                Point leftBottomPoint = Point(minRect[i].center.x - 0.35f * eye.size().width, minRect[i].center.y + 0.5f * minRect[i].size.height);
+                Point rightBottomPoint = Point(minRect[i].center.x + 0.35f * eye.size().width, minRect[i].center.y + 0.5f * minRect[i].size.height);
+                line( tmp, leftBottomPoint, rightBottomPoint, CV_RGB(255, 255, 255), 2, 8 );
+                
+                end = true;
+                break;
+                
+                //waitKey(0);
+            }
+        }
         
+        //namedWindow( "Contours", WINDOW_AUTOSIZE );
+        //imshow( "Contours", drawing );
+        
+        showWindowAtPosition( windowName + " tmp", tmp, windowX, windowY + 120);
+        
+        if (end)
+            break;
     }
     
-    showWindowAtPosition( windowName, bestEye, windowX, windowY + 520);
     
-    // TODO: Pohrat si s polomery.
+#if TIME_MEASURING
+    time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
+    cout << "find eye lids time = " << time_time << endl;
+#endif
 }
 
 void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
 {
-    showWindowAtPosition( windowName + " eye", eye, windowX, windowY + 0);
+    //showWindowAtPosition( windowName + " eye", eye, windowX, windowY + 0);
     
     Mat gaussEye;    
     GaussianBlur( eye, gaussEye, Size(3,3), 0, 0, BORDER_DEFAULT );
@@ -1820,7 +1838,7 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
         }
     }
     
-    showWindowAtPosition( windowName + " intensive eye", intensiveEye, windowX, windowY + 120);
+//    showWindowAtPosition( windowName + " intensive eye", intensiveEye, windowX, windowY + 120);
     
     int minRadius = 3;
     int maxRadius = 7;
@@ -1882,7 +1900,7 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
     
     cvtColor(intensiveEye, intensiveEye, CV_GRAY2BGR);
     circle(intensiveEye, center, minIntensRad, CV_RGB(0, 255, 0));
-    showWindowAtPosition( windowName + " pupil", intensiveEye, windowX, windowY + 240);
+//    showWindowAtPosition( windowName + " pupil", intensiveEye, windowX, windowY + 240);
 }
 
 Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
