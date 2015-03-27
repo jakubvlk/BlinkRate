@@ -44,6 +44,7 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
 Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY, Point center);
 void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
+void findEyeLidsOTSU(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 void blob(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY);
 
 
@@ -328,8 +329,8 @@ void detectAndDisplay( Mat frame )
 
 //			Point eyeCenter = setEyesCentres(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             
-            //Point eyeCenter = findEyeCentre(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-            Point eyeCenter = accurateEyeCentreLocalisationByMeansOfGradients(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            Point eyeCenter = findEyeCentre(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            //Point eyeCenter = accurateEyeCentreLocalisationByMeansOfGradients(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
 			//eyeCenter = myHoughCircle(eyeWithoutReflection, 11, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
             myHoughCircle(eyeWithoutReflection, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
@@ -338,7 +339,7 @@ void detectAndDisplay( Mat frame )
             //VPF_eyelids(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             
             
-            findEyeLids(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            findEyeLidsOTSU(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 			//FCD(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
             //blob(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
      	}
@@ -1713,6 +1714,135 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
     
 }
 
+void findEyeLidsOTSU(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
+{
+#if TIME_MEASURING
+    double time_time;
+    int64 time_wholeFunc = getTickCount();
+#endif
+    
+    Mat blurredEye;
+    
+    // blur
+    //medianBlur(eye, eye, 5); //5
+    GaussianBlur( eye, blurredEye, Size(3,3), 0, 0, BORDER_DEFAULT );
+    
+    Mat intensiveEye(blurredEye.rows, blurredEye.cols, CV_8U);
+    int intesMul = 5;
+    
+    for (int i = 0; i < intensiveEye.cols; i++)
+    {
+        for (int j = 0; j < intensiveEye.rows; j++)
+        {
+            int intensity = blurredEye.at<uchar>(j, i) * intesMul;
+            if (intensity > 255)
+                intensity = 255;
+            intensiveEye.at<uchar>(j, i) = intensity;
+        }
+    }
+    
+    showWindowAtPosition( windowName + " post intensity", intensiveEye, windowX, windowY + 130);
+    
+    
+    Mat threshold_output;
+    threshold( intensiveEye, threshold_output, 0, 255, CV_THRESH_BINARY_INV | CV_THRESH_OTSU );
+    showWindowAtPosition( windowName + " otsu ", threshold_output, windowX, windowY + 260);
+    
+    
+    
+    //Mat srcOutput = eye.clone();
+    vector<vector<Point> > contours;
+    vector<Vec4i> hierarchy;
+    
+    /// Find contours
+    findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    
+    /// Find the rotated rectangles and ellipses for each contour
+    vector<RotatedRect> minRect( contours.size() );
+    vector<RotatedRect> minEllipse( contours.size() );
+    
+    //cout << "xxxxxxx" << endl;
+    for( size_t i = 0; i < contours.size(); i++ )
+    {
+        minRect[i] = minAreaRect( Mat(contours[i]) );
+        if( contours[i].size() > 5 )
+         {
+         
+         minEllipse[i] = fitEllipse( Mat(contours[i]) );
+         //cout << minEllipse[i].angle << endl;
+         }
+    }
+    
+    /// Draw contours + rotated rects + ellipses
+//    Mat drawing = Mat::zeros( threshold_output.size(), CV_8UC3 );
+    //cout << "contours.size() " << contours.size() << endl;
+    for( size_t i = 0; i< contours.size(); i++ )
+    {
+//        Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+        // contour
+//        drawContours( drawing, contours, (int)i, color, 1, 8, vector<Vec4i>(), 0, Point() );
+        // ellipse
+//        ellipse( drawing, minEllipse[i], color, 2, 8 );
+//        rectangle(drawing, minRect[i].boundingRect().tl(), minRect[i].boundingRect().br(), color);
+        
+        
+        // rotated rectangle
+//        cout << i << " minRect[i].size().width " << minRect[i].size.width << " > " << eye.size().width * 0.15 << endl;
+//        cout << i << " minRect[i].size().height " << minRect[i].size.height << " > " << eye.size().height * 0.15 << endl;
+        
+        /*float pomer = 0.f;
+        if (minRect[i].size.width > minRect[i].size.height)
+            pomer = minRect[i].size.width / minRect[i].size.height;
+        if (minRect[i].size.height > minRect[i].size.width)
+            pomer = minRect[i].size.height / minRect[i].size.width;
+        cout << i <<  " pomer: " << pomer << endl;
+         */
+        
+        /*cout
+        << (minRect[i].size.width > eye.size().width * 0.15)
+        << (minRect[i].size.height > eye.size().height * 0.15)
+        << (minRect[i].center.y > eye.size().height * 0.35)
+        << (minRect[i].center.y < eye.size().height * 0.65 ) << endl;
+         */
+        
+        if (minRect[i].size.width > eye.size().width * 0.15 && minRect[i].size.height > eye.size().height * 0.15 && minRect[i].center.y > eye.size().height * 0.35 && minRect[i].center.y < eye.size().height * 0.65 )
+        {
+            //drawContours( srcOutput, contours, (int)i, color, 2, 8, vector<Vec4i>(), 0, Point() );
+            //namedWindow( windowName + "srcOutput", WINDOW_AUTOSIZE );
+            //imshow( windowName + "srcOutput", srcOutput );
+            
+//            ellipse( eye, minEllipse[i], CV_RGB(255, 255, 255), 2, 8 );
+            //rectangle(eye, minRect[i].boundingRect().tl(), minRect[i].boundingRect().br(), CV_RGB(255, 255, 255));
+            
+            Point framePoint = Point(frameX, frameY);
+            Point leftTopPoint = Point(minRect[i].center.x - 0.35f * eye.size().width,  minEllipse[i].boundingRect().tl().y);
+            Point rightTopPoint = Point(minRect[i].center.x + 0.35f * eye.size().width, minEllipse[i].boundingRect().tl().y);
+//            line( eye, leftTopPoint, rightTopPoint, CV_RGB(255, 255, 255), 2, 8 );
+            line( frame, leftTopPoint + framePoint, rightTopPoint + framePoint, CV_RGB(255, 255, 255), 2, 8 );
+            
+            
+            Point leftBottomPoint = Point(minRect[i].center.x - 0.35f * eye.size().width, minEllipse[i].boundingRect().br().y);
+            Point rightBottomPoint = Point(minRect[i].center.x + 0.35f * eye.size().width, minEllipse[i].boundingRect().br().y);
+//            line( eye, leftBottomPoint, rightBottomPoint, CV_RGB(255, 255, 255), 2, 8 );
+            line( frame, leftBottomPoint + framePoint, rightBottomPoint + framePoint, CV_RGB(255, 255, 255), 2, 8 );
+            
+
+            break;
+        }
+    }
+    
+//    namedWindow( windowName + " Contours", WINDOW_AUTOSIZE );
+//    imshow( windowName + " Contours", drawing );
+    
+    showWindowAtPosition( windowName + " tmp", eye, windowX, windowY + 380);
+    
+    
+#if TIME_MEASURING
+    time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
+    cout << "find eye lids otsu time = " << time_time << endl;
+#endif
+}
+
 void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
 {
 #if TIME_MEASURING
@@ -1803,7 +1933,7 @@ void findEyeLids(Mat eye, string windowName, int windowX, int windowY, int frame
         //namedWindow( "Contours", WINDOW_AUTOSIZE );
         //imshow( "Contours", drawing );
         
-        showWindowAtPosition( windowName + " tmp", tmp, windowX, windowY + 120);
+        //showWindowAtPosition( windowName + " tmp", tmp, windowX, windowY + 120);
         
         if (end)
             break;
