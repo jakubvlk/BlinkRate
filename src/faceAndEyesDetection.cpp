@@ -1747,7 +1747,7 @@ void findEyeLidsOTSU(Mat eye, string windowName, int windowX, int windowY, int f
     int64 time_wholeFunc = getTickCount();
 #endif
     
-    showWindowAtPosition( windowName + " pre", eye, windowX, windowY);
+    //showWindowAtPosition( windowName + " pre", eye, windowX, windowY);
     
     Mat blurredEye;
     
@@ -1769,12 +1769,12 @@ void findEyeLidsOTSU(Mat eye, string windowName, int windowX, int windowY, int f
         }
     }
     
-    showWindowAtPosition( windowName + " post intensity", intensiveEye, windowX, windowY + 130);
+    //showWindowAtPosition( windowName + " post intensity", intensiveEye, windowX, windowY + 130);
     
     
     Mat threshold_output;
     threshold( intensiveEye, threshold_output, 0, 255, CV_THRESH_BINARY_INV | CV_THRESH_OTSU );
-    showWindowAtPosition( windowName + " otsu ", threshold_output, windowX, windowY + 260);
+   // showWindowAtPosition( windowName + " otsu ", threshold_output, windowX, windowY + 260);
     
     
     
@@ -1865,7 +1865,7 @@ void findEyeLidsOTSU(Mat eye, string windowName, int windowX, int windowY, int f
 //    namedWindow( windowName + " Contours", WINDOW_AUTOSIZE );
 //    imshow( windowName + " Contours", drawing );
     
-    showWindowAtPosition( windowName + " tmp", eye, windowX, windowY + 380);
+    //showWindowAtPosition( windowName + " tmp", eye, windowX, windowY + 380);
     
     
 #if TIME_MEASURING
