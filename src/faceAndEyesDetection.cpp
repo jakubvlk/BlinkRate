@@ -1,5 +1,5 @@
 #define TIME_MEASURING  0
-#define EXPERIMENTS 0
+#define EXPERIMENTS 1
 #define XCODE 1
 
 
@@ -320,7 +320,7 @@ void detectAndDisplay( Mat frame )
   		Rect face = pickFace(faces);
 
     	Point center( face.x + face.width*0.5, face.y + face.height*0.5 );
-    	rectangle( frame, Rect(face.x, face.y, face.width, face.height), Scalar( 255, 0, 255 ), 4, 8, 0 );
+    	//rectangle( frame, Rect(face.x, face.y, face.width, face.height), Scalar( 255, 0, 255 ), 4, 8, 0 );
 
     	Mat faceROI = frame_gray( face );
     	std::vector<Rect> eyes;
@@ -333,7 +333,7 @@ void detectAndDisplay( Mat frame )
 
     	for( size_t j = 0; j < eyes.size(); j++ )
      	{
-            rectangle( frame, Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height), Scalar( 0, 0, 255 ), 2);
+            //rectangle( frame, Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height), Scalar( 0, 0, 255 ), 2);
             //eyes.push_back(Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height));
             
             // Pokus - Zkouska, jestli equalize na ocni oblast, zlepsi kvalitu rozpoznani
@@ -352,8 +352,8 @@ void detectAndDisplay( Mat frame )
 			Mat eyeWithoutReflection = removeReflections(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
             
-            //Point eyeCenter = findEyeCentre(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-            Point eyeCenter = accurateEyeCentreLocalisationByMeansOfGradients(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            Point eyeCenter = findEyeCentre(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            //Point eyeCenter = accurateEyeCentreLocalisationByMeansOfGradients(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
 			//eyeCenter = myHoughCircle(eyeWithoutReflection, 11, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
             myHoughCircle(eyeWithoutReflection, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
@@ -369,10 +369,10 @@ void detectAndDisplay( Mat frame )
 
 		if (drawInFrame)
 		{
-	     	drawEyesCentres();
+            drawEyesCentres();
             //drawPupils();
-            drawIrises();
-            drawEyeLids();
+            //drawIrises();
+            //drawEyeLids();
  
 	    }
     }
@@ -770,11 +770,6 @@ float avgIntensity(Mat mat, int x, int y, int width, int height, int maxIntensit
                 totalIntensity += intensity;
                 pixelCount++;
             }
-            else
-            {
-                cout << "damn" << endl;
-            }
-
         }
     }
     
@@ -1021,7 +1016,7 @@ Point findEyeCentre ( Mat eye, string windowName, int windowX, int windowY, int 
         
         // 3.3. ELLIPSE FITTING
         RotatedRect myEllipse;
-        if (contours.size() >= 5)
+        if (contours[finalCandidate].size() >= 5)
             myEllipse = fitEllipse( Mat(contours[finalCandidate]));
         
         /*ellipse( drawing, myEllipse, CV_RGB(255, 255, 255));
@@ -1166,8 +1161,8 @@ Point findEyeCentre ( Mat eye, string windowName, int windowX, int windowY, int 
         line(eye, Point(myEllipse.center.x, myEllipse.center.y - lineLength*0.5), Point(myEllipse.center.x, myEllipse.center.y + lineLength*0.5), ellipseColor);
         
         // cebter if ellipse to frame
-        line(frame, Point(frameX + myEllipse.center.x - lineLength*0.5, frameY + myEllipse.center.y), Point(frameX + myEllipse.center.x + lineLength*0.5, frameY + myEllipse.center.y), ellipseColor);
-        line(frame, Point(frameX + myEllipse.center.x, frameY + myEllipse.center.y - lineLength*0.5), Point(frameX + myEllipse.center.x, frameY + myEllipse.center.y + lineLength*0.5), ellipseColor);
+        //line(frame, Point(frameX + myEllipse.center.x - lineLength*0.5, frameY + myEllipse.center.y), Point(frameX + myEllipse.center.x + lineLength*0.5, frameY + myEllipse.center.y), ellipseColor);
+        //line(frame, Point(frameX + myEllipse.center.x, frameY + myEllipse.center.y - lineLength*0.5), Point(frameX + myEllipse.center.x, frameY + myEllipse.center.y + lineLength*0.5), ellipseColor);
     
         //showWindowAtPosition( windowName + " final", eye, windowX, windowY + 580);
         //showWindowAtPosition( windowName + " PRE final", eye2, windowX, windowY + 680);
@@ -1347,9 +1342,9 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
     }
     
     
-    Mat gaussEye;
+    Mat gaussEye = eye;
     
-    GaussianBlur( eye, gaussEye, Size(3,3), 0, 0, BORDER_DEFAULT );
+    //GaussianBlur( eye, gaussEye, Size(3,3), 0, 0, BORDER_DEFAULT );
     
     Mat intensiveEye = gaussEye.clone();
     int intesMul = 5;
@@ -1365,6 +1360,7 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
             intens[x] = intensity;
         }
     }
+    
     
     Mat grad_x, grad_y;
     
@@ -1386,12 +1382,28 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
         }
     }
     
+    bool useWeight = true;
+    Mat weight;// = intensiveEye.clone();
+    GaussianBlur( intensiveEye, weight, Size( 5, 5 ), 0, 0 );
+    
+    for (int y = 0; y < weight.rows; ++y)
+    {
+        unsigned char *row = weight.ptr<unsigned char>(y);
+        for (int x = 0; x < weight.cols; ++x)
+        {
+            row[x] = (255 - row[x]);
+        }
+    }
+    
+    
     int gradientsCount = 0;
     Mat sum = Mat::zeros(eye.rows, eye.cols, CV_32F);
     for (int y = 0; y < eye.rows; ++y)
     {
         const float *gradXRows = grad_x.ptr<float>(y);
         const float *gradYRows = grad_y.ptr<float>(y);
+        
+        const unsigned char *ws = weight.ptr<unsigned char>(y);
         
         for (int x = 0; x < eye.cols; ++x)
         {
@@ -1423,8 +1435,16 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
                     float dMagnitude = sqrt( dx * dx + dy * dy );
                     dx = dx / dMagnitude;
                     dy = dy / dMagnitude;
-
-                    float dotProduct = dx*gx + dy*gy;
+                    
+                    float dotProduct;
+                    if (useWeight)
+                    {
+                        dotProduct = dx*gx + dy*gy * (ws[x] / 150.f);
+                    }
+                    else
+                    {
+                        dotProduct = dx*gx + dy*gy;
+                    }
                     
                     if (dotProduct < 0.f)
                         dotProduct = 0.f;
@@ -1896,7 +1916,7 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
         }
     }
     
-//    showWindowAtPosition( windowName + " intensive eye", intensiveEye, windowX, windowY + 120);
+    //showWindowAtPosition( windowName + " intensive eye", intensiveEye, windowX, windowY + 120);
     
     int minRadius = 3;
     int maxRadius = 7;
@@ -1958,7 +1978,11 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
     
     cvtColor(intensiveEye, intensiveEye, CV_GRAY2BGR);
     circle(intensiveEye, center, minIntensRad, CV_RGB(0, 255, 0));
-//    showWindowAtPosition( windowName + " pupil", intensiveEye, windowX, windowY + 240);
+    //showWindowAtPosition( windowName + " pupil", intensiveEye, windowX, windowY + 240);
+    
+    cvtColor(eye, eye, CV_GRAY2BGR);
+    circle(eye, center, minIntensRad, CV_RGB(0, 255, 0));
+    //showWindowAtPosition( windowName + " E pupil", eye, windowX, windowY + 360);
 }
 
 Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
@@ -2272,8 +2296,6 @@ void readEyeData(string fullEyeDataFilePath, vector<Point> &dataEyeCentres)
                 char lineBuff[64];
                 strcpy(lineBuff, line.c_str());
                 
-                int lx, ly, rx, ry;
-                
                 sscanf (lineBuff," %d %d %d %d", &lx, &ly, &rx, &ry);
                 //printf ("%d %d %d %d\n\n", lx, ly, rx, ry);
                 
@@ -2296,43 +2318,27 @@ void readEyeData(string fullEyeDataFilePath, vector<Point> &dataEyeCentres)
     myfile.close();
 }
 
+int asda = 0;
 void computeEyeCentreDistances(Point dataLeftEye, Point dataRigtEye, Point myLeftEye, Point myRightEye, vector<double> &eyeCentreDistances)
 {
-    bool includeNonDetectedEyes = false;
     Point zeroPoint = Point(0, 0);
     
-    double dataDistance = norm(dataLeftEye - dataRigtEye);
-    if (dataDistance == 0.)
-        dataDistance = 1.;
-    
-    double distance = norm(dataLeftEye - myLeftEye);
-    
-    if (!includeNonDetectedEyes && myLeftEye != zeroPoint)
+    if (myLeftEye != zeroPoint && myRightEye != zeroPoint)
     {
-        eyeCentreDistances.push_back(distance / dataDistance);
-        //cout << distance << endl;
+        double el = norm(dataLeftEye - myLeftEye);
+        double er = norm(dataRigtEye - myRightEye);
+        double distance = norm(dataLeftEye - dataRigtEye);
+        distance = 0. ? 1. : distance;
+        
+        //cout << MAX(el, er) / distance << endl;
+        eyeCentreDistances.push_back(MAX(el, er) / distance);
+        
+        if ( MAX(el, er) / distance  <= 0.05)
+            asda++;
     }
-    else if(includeNonDetectedEyes)
-    {
-        eyeCentreDistances.push_back(distance / dataDistance);
-        //cout << distance << endl;
-    }
-    
-    distance = norm(dataRigtEye - myRightEye);
-    if (!includeNonDetectedEyes && myRightEye != zeroPoint)
-    {
-        eyeCentreDistances.push_back(distance / dataDistance);
-        //cout << distance << endl;
-    }
-    else if(includeNonDetectedEyes)
-    {
-        eyeCentreDistances.push_back(distance / dataDistance);
-        //cout << distance << endl;
-    }
-    
 }
 
-double getAvgCentreDistance(const vector<double> &eyeCentreDistances)
+double getAvgEyeCentreNormalisedError(const vector<double> &eyeCentreDistances)
 {
     double sum = 0.;
     
@@ -2342,6 +2348,20 @@ double getAvgCentreDistance(const vector<double> &eyeCentreDistances)
     }
     
     return sum / eyeCentreDistances.size();
+}
+
+double getEyeCentreNormalisedError(const vector<double> &eyeCentreDistances, double e)
+{
+    int count = 0;
+    
+    for (int i = 0; i < eyeCentreDistances.size(); i++)
+    {
+       if (eyeCentreDistances[i] <= e)
+           count++;
+    }
+    
+
+    return count / (double)eyeCentreDistances.size();
 }
 
 void testDetection()
@@ -2358,7 +2378,7 @@ void testDetection()
     string prefix = "BioID_";
     string imgSuffix = ".pgm", dataSuffix = ".eye";
     
-    int fileCount = 1521; //1521;
+    int fileCount = 1521;   //1521;
     vector<double> eyeCentreDistances;
     
     char numstr[21]; // enough to hold all numbers up to 64-bits
@@ -2392,7 +2412,7 @@ void testDetection()
         detectAndDisplay(frame);
         
         imgFullFilePath = folder + "results/" + prefix + numstr +"_result" + imgSuffix;
-        //imwrite(imgFullFilePath, frame);
+        imwrite(imgFullFilePath, frame);
         
         // test data
         dataFullFilePath = folder + prefix + numstr + dataSuffix;
@@ -2426,10 +2446,26 @@ void testDetection()
         
     }
     
-    cout << "avg centres distance = " << getAvgCentreDistance(eyeCentreDistances) << endl;
+    cout << "eye AVG centre normalised error = " << getAvgEyeCentreNormalisedError(eyeCentreDistances) << endl;
+//    cout << "eye centre normalised error = " << getEyeCentreNormalisedError(eyeCentreDistances, 0.1) * 100 << "%" << endl;
+
+    double smallestE = 0.05;
+    for (int i = 1; i <= 5; i++)
+    {
+        cout << "eye centre normalised error for " << smallestE * i << " = " <<  getEyeCentreNormalisedError(eyeCentreDistances, smallestE * i) * 100 << "%" << endl;
+    }
+    
+    // vypis pro tabulku
+    smallestE = 0.01;
+    for (int i = 1; i <= 25; i++)
+    {
+        cout <<  getEyeCentreNormalisedError(eyeCentreDistances, smallestE * i) * 100 << endl;
+    }
     
     time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
     cout << "testDetection time = " << time_time << endl;
+    
+        cout << eyeCentreDistances.size() << endl;
 }
 
 // 0.176173
