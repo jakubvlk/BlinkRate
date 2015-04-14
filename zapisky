@@ -1,0 +1,55 @@
+***PUVODNI OBLICEJ
+face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(frame_gray.size().width / 6, frame_gray.size().height / 6) );
+face count = 1471, that's 96.7127% face detection
+faceTestDetection time = 39.0422
+
+*** ZMENA scaleFactor
+face_cascade.detectMultiScale( frame_gray, faces, 2, 2, 0|CV_HAAR_FIND_BIGGEST_OBJECT, Size(frame_gray.size().width / 6, frame_gray.size().height / 6) );
+face count = 968, that's 63.6423% face detection
+faceTestDetection time = 18.5913
+
+face_cascade.detectMultiScale( frame_gray, faces, 1.2, 2, 0|CV_HAAR_SCALE_IMAGE, Size(frame_gray.size().width / 6, frame_gray.size().height / 6) );
+face count = 1443, that's 94.8718% face detection
+faceTestDetection time = 27.8656
+
+face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_FIND_BIGGEST_OBJECT, Size(frame_gray.size().width / 6, frame_gray.size().height / 6) );
+face count = 1471, that's 96.7127% face detection
+faceTestDetection time = 40.1854
+
+
+** UPRAVENY OBLICEJ
+face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(frame_gray.size().width / 4, frame_gray.size().height / 4) );
+face count = 1469, that's 96.5812% face detection
+faceTestDetection time = 19.1376
+
+
+
+
+
+***PUVODNI OCI
+eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(30, 30) );
+eye count = 1860, that's 61.144% eye detection
+testEyeDetection time = 65.0236
+
+eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(23, 23) );
+eye count = 2517, that's 82.7416% eye detection
+testEyeDetection time = 75.5226
+
+eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(21, 21) );
+eye count = 2575, that's 84.6483% eye detection
+testEyeDetection time = 72.7868
+
+eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(20, 20) );
+eye count = 2593, that's 85.24% eye detection
+testEyeDetection time = 76.2807
+
+eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(15, 15) );
+eye count = 2593, that's 85.24% eye detection
+testEyeDetection time = 77.7536
+
+***UPRAVENE OCI
+eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(20, 20) );
+eye count = 2593, that's 85.24% eye detection
+testEyeDetection time = 76.2807
+
+

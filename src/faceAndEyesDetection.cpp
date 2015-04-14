@@ -61,11 +61,16 @@ void onHCParam2Trackbar(int pos, void *);
 void onHCDpTrackbar(int pos, void *);
 void onHCMinDistanceTrackbar(int pos, void *);
 
+
+// TESTS
 void testDetection();
+void testFaceDetection();
+void testEyeDetection();
+int facesDetectedCount = 0, eyesDetectedCount = 0;
 
 // default values
 #if XCODE
-String face_cascade_name = "../../../res/haarcascade_frontalface_alt.xml";
+String face_cascade_name = "../../../res/haarcascade_frontalface_alt.xml";  //lbpcascade_frontalface.xml
 String eyes_cascade_name = "../../../res/haarcascade_eye_tree_eyeglasses.xml";
 #else
 String face_cascade_name = "../res/haarcascade_frontalface_alt.xml";
@@ -125,6 +130,8 @@ int main( int argc, const char** argv )
 #if EXPERIMENTS
     
     testDetection();
+    //testFaceDetection();
+    //testEyeDetection();
     
 #else
 
@@ -295,6 +302,7 @@ void loadCascades()
 	}
 }
 
+
 /** @function detectAndDisplay */
 void detectAndDisplay( Mat frame )
 {
@@ -313,27 +321,30 @@ void detectAndDisplay( Mat frame )
   	equalizeHist( frame_gray, frame_gray );
 	
   	//Detects objects (faces) of different sizes in the input image. The detected objects are returned as a list of rectangles.
-  	face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(frame_gray.size().width / 6, frame_gray.size().height / 6) );
+  	face_cascade.detectMultiScale( frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE, Size(frame_gray.size().width / 4, frame_gray.size().height / 4) );
 
   	if (faces.size() > 0)
   	{
   		Rect face = pickFace(faces);
 
     	Point center( face.x + face.width*0.5, face.y + face.height*0.5 );
-    	//rectangle( frame, Rect(face.x, face.y, face.width, face.height), Scalar( 255, 0, 255 ), 4, 8, 0 );
+    	rectangle( frame, Rect(face.x, face.y, face.width, face.height), Scalar( 255, 0, 255 ), 4, 8, 0 );
+        facesDetectedCount++;
 
     	Mat faceROI = frame_gray( face );
     	std::vector<Rect> eyes;
 
     	//-- In each face, detect eyes
-    	eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(30, 30) );
+    	eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(20, 20) );
 
 
     	eyes = pickEyeRegions(eyes, faceROI);
 
     	for( size_t j = 0; j < eyes.size(); j++ )
      	{
-            //rectangle( frame, Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height), Scalar( 0, 0, 255 ), 2);
+            eyesDetectedCount++;
+            
+            rectangle( frame, Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height), Scalar( 0, 0, 255 ), 2);
             //eyes.push_back(Rect(face.x + eyes[j].x, face.y + eyes[j].y, eyes[j].width, eyes[j].height));
             
             // Pokus - Zkouska, jestli equalize na ocni oblast, zlepsi kvalitu rozpoznani
@@ -352,20 +363,14 @@ void detectAndDisplay( Mat frame )
 			Mat eyeWithoutReflection = removeReflections(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
             
-            Point eyeCenter = findEyeCentre(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-            //Point eyeCenter = accurateEyeCentreLocalisationByMeansOfGradients(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            //Point eyeCenter = findEyeCentre(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            Point eyeCenter = accurateEyeCentreLocalisationByMeansOfGradients(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
 
-			//eyeCenter = myHoughCircle(eyeWithoutReflection, 11, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
-            myHoughCircle(eyeWithoutReflection, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
-            findPupil(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
-//            findEyeCorners(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-            //VPF_eyelids(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+			//myHoughCircle(eyeWithoutReflection, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
+            //findPupil(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
             
-            
-            findEyeLidsOTSU(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-			//FCD(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-            //blob(eyeMat, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
-     	}
+            //findEyeLidsOTSU(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+			     	}
 
 		if (drawInFrame)
 		{
@@ -434,17 +439,21 @@ vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 	vector<Rect> correctEyes = eyes;
 
 	// prostor pro oci je urcite ve vrchni polovine obliceje...  !!! toto by se dalo udelat i zmensenim oblasti obliceje o 1/2 -> lepsi vykon!!!
-	for (int i = 0; i < correctEyes.size(); ++i)
+	for (int i = 0; i < correctEyes.size();)
 	{
 		if (correctEyes[i].y > (face.size().height * 0.5 ))
 		{
             cout << "Mazu! Oblast oka mimo vrchni polovinu obliceje. x,y = " << correctEyes[i].x << ", " << correctEyes[i].y << ". Polovina obliceje ma delku " << face.size().height * 0.5 << endl;
 			correctEyes.erase(correctEyes.begin() + i);
 		}
+        else
+        {
+            i++;
+        }
 	}
 
 	// odebere ocni oblasti, ktere zasahuji mimo oblicej
-	for (int i = 0; i < correctEyes.size(); ++i)
+    for (int i = 0; i < correctEyes.size();)
 	{
 		// Prave oko
 		if ( eyes[i].x > (face.size().width * 0.5) )
@@ -454,6 +463,10 @@ vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 				cout << "Mazu! Oblast praveho oka je mimo oblicej. x,y = " << eyes[i].x << ", " << eyes[i].y << endl;
 				correctEyes.erase(correctEyes.begin() + i);			
 			}
+            else
+            {
+                i++;
+            }
 		}
 		// Leve oko
 		else
@@ -463,17 +476,24 @@ vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 				cout << "Mazu! Oblast leveho oka je mimo oblicej. x,y = " << eyes[i].x << ", " << eyes[i].y << endl;
 				correctEyes.erase(correctEyes.begin() + i);			
 			}
+            else
+            {
+                i++;
+            }
 		}
 	}
 
 	// odstrani oci s podobnym stredem
-	for (int i = 0; i < correctEyes.size(); ++i)
+	for (int i = 0; i < correctEyes.size(); )
 	{
+        bool incressI = true;
 		// jak jsou vzdalene stredy 2. ocnich oblasti. Pokud je to min nez treshold (relativne), tak mensi ocni oblast odstranime
 		double distancesTresh = 0.1;	
 
-		for (int j = 0; j < correctEyes.size(); ++j)
+		for (int j = 0; j < correctEyes.size(); )
 		{
+            bool incressJ = true;
+            
 			if (i != j)
 			{
 				double distance = /*sqrt*/( pow(correctEyes[i].x - correctEyes[j].x, 2.) + pow(correctEyes[i].y - correctEyes[j].y, 2.) );
@@ -489,40 +509,52 @@ vector<Rect> pickEyeRegions(vector<Rect> eyes, Mat face)
 							correctEyes.erase(correctEyes.begin() + j);
                             //cout << "mazu j " << j << endl;
                             
-                            if ( i >= correctEyes.size())
+                            /*if ( i >= correctEyes.size())
                                 i = correctEyes.size() - 1;
                             if ( j >= correctEyes.size())
-                                j = correctEyes.size() - 1;
+                                j = correctEyes.size() - 1;*/
+                            incressJ = false;
 						}
 						else
 						{
 							correctEyes.erase(correctEyes.begin() + i);
                             //cout << "mazu i " << i << endl;
                             
-                            if ( j >= correctEyes.size())
+                            /*if ( j >= correctEyes.size())
                                 j = correctEyes.size() - 1;
                             if ( i >= correctEyes.size())
                                 i = correctEyes.size() - 1;
+                             */
+                            incressI = false;
                             
 						}
 					}
 				}
 			}
+            
+            if (incressJ)
+                j++;
 		}
+        
+        if (incressI)
+            i++;
 	}
 
 	// TMP - tvrde smazeni na 2 ocni oblasti
 	if (correctEyes.size() > 2)
 		correctEyes.erase(correctEyes.begin() + 2, correctEyes.begin() + correctEyes.size());  
 
-	if (correctEyes.size() > 0)
+    // BLBOST - vrati to treba ocni oblat dole!!!
+	/*if (correctEyes.size() > 0)
 	{
 		return correctEyes;
 	}
 	else
 	{
 		return eyes;
-	}
+	}*/
+    
+    return correctEyes;
 }
 
 void refreshImage()
@@ -2061,7 +2093,7 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
 	if (xMin < 0)
 		xMin = 0;
 	int xMax = center.x + halfKernel;
-	if (xMax > eye.size().width)
+    if (xMax > eye.size().width)
 		xMax = eye.size().width;
 	int yMin = center.y - halfKernel;
 	if (yMin < 0)
@@ -2364,7 +2396,7 @@ double getEyeCentreNormalisedError(const vector<double> &eyeCentreDistances, dou
     return count / (double)eyeCentreDistances.size();
 }
 
-void testDetection()
+void testFaceDetection()
 {
     double time_time;
     int64 time_wholeFunc = getTickCount();
@@ -2412,7 +2444,131 @@ void testDetection()
         detectAndDisplay(frame);
         
         imgFullFilePath = folder + "results/" + prefix + numstr +"_result" + imgSuffix;
-        imwrite(imgFullFilePath, frame);
+        //imwrite(imgFullFilePath, frame);
+    }
+    
+    cout << "face count = " << facesDetectedCount << ", that's " << facesDetectedCount / (double)fileCount * 100 << "% face detection" << endl;
+    
+    time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
+    cout << "faceTestDetection time = " << time_time << endl;
+}
+
+void testEyeDetection()
+{
+    double time_time;
+    int64 time_wholeFunc = getTickCount();
+    
+#if XCODE
+    string folder = "../../../res/pics/BioID-FaceDatabase-V1.2/";
+#else
+    string folder = "../res/pics/BioID-FaceDatabase-V1.2/";
+#endif
+    
+    string prefix = "BioID_";
+    string imgSuffix = ".pgm", dataSuffix = ".eye";
+    
+    int fileCount = 1521;   //1521;
+    vector<double> eyeCentreDistances;
+    
+    char numstr[21]; // enough to hold all numbers up to 64-bits
+    string imgFullFilePath = "", dataFullFilePath = "";
+    for (int i = 0; i < fileCount; i++)
+    {
+        vector<Point> dataEyeCentres;
+        
+        switch (digitsCount(i))
+        {
+            case 1:
+                sprintf(numstr, "000%d", static_cast<int>(i));
+                break;
+                
+            case 2:
+                sprintf(numstr, "00%d", static_cast<int>(i));
+                break;
+            case 3:
+                sprintf(numstr, "0%d", static_cast<int>(i));
+                break;
+            default:
+                sprintf(numstr, "%d", static_cast<int>(i));
+                break;
+        }
+        
+        imgFullFilePath = folder + prefix + numstr + imgSuffix;
+        
+        frame = imread(imgFullFilePath);
+        
+        originalFrame = frame.clone();
+        detectAndDisplay(frame);
+        
+        imgFullFilePath = folder + "results/" + prefix + numstr +"_result" + imgSuffix;
+        //imwrite(imgFullFilePath, frame);
+    }
+    
+    cout << "face count = " << facesDetectedCount << ", that's " << facesDetectedCount / (double)fileCount * 100 << "% face detection" << endl;
+    
+    cout << "eye count = " << eyesDetectedCount << ", that's " << eyesDetectedCount / (double)(facesDetectedCount * 2 ) * 100 << "% eye detection" << endl;
+    
+    
+    time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
+    cout << "testEyeDetection time = " << time_time << endl;
+}
+
+
+void testDetection()
+{
+    double time_time;
+    int64 time_wholeFunc = getTickCount();
+    
+#if XCODE
+    string folder = "../../../res/pics/BioID-FaceDatabase-V1.2/";
+#else
+    string folder = "../res/pics/BioID-FaceDatabase-V1.2/";
+#endif
+    
+    string prefix = "BioID_";
+    string imgSuffix = ".pgm", dataSuffix = ".eye";
+    
+    int fileCount = 100;   //1521;
+    vector<double> eyeCentreDistances;
+    
+    char numstr[21]; // enough to hold all numbers up to 64-bits
+    string imgFullFilePath = "", dataFullFilePath = "";
+    for (int i = 0; i < fileCount; i++)
+    {
+        vector<Point> dataEyeCentres;
+        
+        switch (digitsCount(i))
+        {
+            case 1:
+                sprintf(numstr, "000%d", static_cast<int>(i));
+                break;
+                
+            case 2:
+                sprintf(numstr, "00%d", static_cast<int>(i));
+                break;
+            case 3:
+                sprintf(numstr, "0%d", static_cast<int>(i));
+                break;
+            default:
+                sprintf(numstr, "%d", static_cast<int>(i));
+                break;
+        }
+        
+        //TMP HAAAAK  *****************************************************************************  !!!!!!!!!!!!!!!!! ******************************
+        //sprintf(numstr, "00%d", static_cast<int>(11));
+        
+        imgFullFilePath = folder + prefix + numstr + imgSuffix;
+        
+        
+        
+        
+        frame = imread(imgFullFilePath);
+        
+        originalFrame = frame.clone();
+        detectAndDisplay(frame);
+        
+        imgFullFilePath = folder + "results/" + prefix + numstr +"_result" + imgSuffix;
+        //imwrite(imgFullFilePath, frame);
         
         // test data
         dataFullFilePath = folder + prefix + numstr + dataSuffix;
@@ -2464,8 +2620,4 @@ void testDetection()
     
     time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
     cout << "testDetection time = " << time_time << endl;
-    
-        cout << eyeCentreDistances.size() << endl;
 }
-
-// 0.176173
