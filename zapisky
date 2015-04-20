@@ -53,3 +53,134 @@ eye count = 2593, that's 85.24% eye detection
 testEyeDetection time = 76.2807
 
 
+101
+eye centre normalised error for 0.05 = 38.806%
+eye centre normalised error for 0.1 = 53.7313%
+eye centre normalised error for 0.15 = 61.194%
+eye centre normalised error for 0.2 = 74.6269%
+eye centre normalised error for 0.25 = 92.5373%
+
+ALL
+eye centre normalised error for 0.05 = 36.7251%
+eye centre normalised error for 0.1 = 66.0819%
+eye centre normalised error for 0.15 = 72.0468%
+eye centre normalised error for 0.2 = 81.0526%
+eye centre normalised error for 0.25 = 94.0351%
+
+ALL po uprave co je leve a co prave oko
+eye centre normalised error for 0.05 = 38.191%
+eye centre normalised error for 0.1 = 71.3568%
+eye centre normalised error for 0.15 = 76.0469%
+eye centre normalised error for 0.2 = 83.8358%
+eye centre normalised error for 0.25 = 94.6399%
+
+
+S jinym pocitanm grad ALL
+eye centre normalised error for 0.05 = 31.8258%
+eye centre normalised error for 0.1 = 63.5678%
+eye centre normalised error for 0.15 = 71.4405%
+eye centre normalised error for 0.2 = 87.1022%
+eye centre normalised error for 0.25 = 96.4824%
+
+S jinym pocitanm grad 100
+eye centre normalised error for 0.05 = 29.8507%
+eye centre normalised error for 0.1 = 53.7313%
+eye centre normalised error for 0.15 = 64.1791%
+eye centre normalised error for 0.2 = 86.5672%
+eye centre normalised error for 0.25 = 95.5224%
+
+S jinym pocitanm grad 100 gMag < 3
+eye centre normalised error for 0.05 = 25.3731%
+eye centre normalised error for 0.1 = 56.7164%
+eye centre normalised error for 0.15 = 71.6418%
+eye centre normalised error for 0.2 = 91.0448%
+eye centre normalised error for 0.25 = 98.5075%
+
+S jinym pocitanm grad 100 gMag < 2.7
+eye centre normalised error for 0.05 = 28.3582%
+eye centre normalised error for 0.1 = 55.2239%
+eye centre normalised error for 0.15 = 67.1642%
+eye centre normalised error for 0.2 = 88.0597%
+eye centre normalised error for 0.25 = 98.5075%
+
+S jinym pocitanm grad ALL gMag < 2.7
+eye centre normalised error for 0.05 = 31.072%
+eye centre normalised error for 0.1 = 65.0754%
+eye centre normalised error for 0.15 = 73.6181%
+eye centre normalised error for 0.2 = 87.9397%
+eye centre normalised error for 0.25 = 96.9012%
+
+201
+eye centre normalised error for 0.05 = 37.3333%
+eye centre normalised error for 0.1 = 60%
+eye centre normalised error for 0.15 = 65.3333%
+eye centre normalised error for 0.2 = 78.6667%
+eye centre normalised error for 0.25 = 92.6667%
+
+201 gMag < 250
+eye centre normalised error for 0.05 = 47.3333%
+eye centre normalised error for 0.1 = 60%
+eye centre normalised error for 0.15 = 64%
+eye centre normalised error for 0.2 = 81.3333%
+eye centre normalised error for 0.25 = 92%
+
+201 gMag < 300
+eye centre normalised error for 0.05 = 50.6667%
+eye centre normalised error for 0.1 = 58%
+eye centre normalised error for 0.15 = 61.3333%
+eye centre normalised error for 0.2 = 78%
+eye centre normalised error for 0.25 = 90.6667%
+
+ALL gMag < 250
+eye centre normalised error for 0.05 = 50.6667%
+eye centre normalised error for 0.1 = 58%
+eye centre normalised error for 0.15 = 61.3333%
+eye centre normalised error for 0.2 = 78%
+eye centre normalised error for 0.25 = 90.6667%
+
+*** UPRAVENE gMag < 310 ***
+eye centre normalised error for 0.05 = 52.7638%
+eye centre normalised error for 0.1 = 78.392%
+eye centre normalised error for 0.15 = 81.072%
+eye centre normalised error for 0.2 = 89.2797%
+eye centre normalised error for 0.25 = 96.9849%
+
+
+
+
+******* IND PUVODNI ********
+intesMul = 5;
+eye centre normalised error for 0.05 = 14.2245%
+eye centre normalised error for 0.1 = 56.641%
+eye centre normalised error for 0.15 = 72.2365%
+eye centre normalised error for 0.2 = 79.4344%
+eye centre normalised error for 0.25 = 88.4319%
+
+
+intesMul = 3;
+eye centre normalised error for 0.05 = 9.01361%
+eye centre normalised error for 0.1 = 45.1531%
+eye centre normalised error for 0.15 = 67.1769%
+eye centre normalised error for 0.2 = 79.7619%
+eye centre normalised error for 0.25 = 89.3707%
+
+intesMul = 4
+eye centre normalised error for 0.05 = 12.1084%
+eye centre normalised error for 0.1 = 52.6672%
+eye centre normalised error for 0.15 = 70.5334%
+eye centre normalised error for 0.2 = 80.4403%
+eye centre normalised error for 0.25 = 89.6698%
+
+intesMul = 6;
+eye centre normalised error for 0.05 = 16.087%
+eye centre normalised error for 0.1 = 58.2609%
+eye centre normalised error for 0.15 = 69.6522%
+eye centre normalised error for 0.2 = 77.913%
+eye centre normalised error for 0.25 = 85.4783%
+
+intesMul = 7;
+eye centre normalised error for 0.05 = 18.4753%
+eye centre normalised error for 0.1 = 58.565%
+eye centre normalised error for 0.15 = 67.6233%
+eye centre normalised error for 0.2 = 73.8117%
+eye centre normalised error for 0.25 = 82.2422%
