@@ -134,8 +134,8 @@ int main( int argc, const char** argv )
     //testDetection();
     //testFaceDetection();
     //testEyeDetection();
-    testIrisDetection();
-    //testLidsDetection();
+    //testIrisDetection();
+    testLidsDetection();
     
 #else
 
@@ -1831,11 +1831,11 @@ void findEyeLidsOTSU(Mat eye, string windowName, int windowX, int windowY, int f
     Mat blurredEye;
     
     // blur
-    //medianBlur(eye, eye, 5); //5
-    GaussianBlur( eye, blurredEye, Size(3,3), 0, 0, BORDER_DEFAULT );
+    medianBlur(eye, blurredEye, 7); //5
+    //GaussianBlur( eye, blurredEye, Size(5, 5), 0, 0, BORDER_DEFAULT );
     
     Mat intensiveEye(blurredEye.rows, blurredEye.cols, CV_8U);
-    int intesMul = 5;
+    int intesMul = 7;   //5
     
     for (int i = 0; i < intensiveEye.cols; i++)
     {
@@ -1862,13 +1862,12 @@ void findEyeLidsOTSU(Mat eye, string windowName, int windowX, int windowY, int f
     vector<Vec4i> hierarchy;
     
     /// Find contours
-    findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+    findContours( threshold_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_NONE, Point(0, 0) );
     
     /// Find the rotated rectangles and ellipses for each contour
     vector<RotatedRect> minRect( contours.size() );
     vector<RotatedRect> minEllipse( contours.size() );
     
-    //cout << "xxxxxxx" << endl;
     for( size_t i = 0; i < contours.size(); i++ )
     {
         minRect[i] = minAreaRect( Mat(contours[i]) );
@@ -2874,7 +2873,7 @@ void testLidsDetection()
         detectAndDisplay(frame);
         
         imgFullFilePath = folder + "results/" + prefix + numstr +"_result" + imgSuffix;
-        imwrite(imgFullFilePath, frame);
+        //imwrite(imgFullFilePath, frame);
         
         // test data
         dataFullFilePath = folder + prefix + numstr + dataSuffix;
@@ -2895,7 +2894,7 @@ void testLidsDetection()
     double smallestE = 0.05;
     for (int i = 1; i <= 5; i++)
     {
-        cout << "eye iris normalised error for " << smallestE * i << " = " <<  getNormalisedError(lidsDistances, smallestE * i) * 100 << "%" << endl;
+        cout << "eye lids normalised error for " << smallestE * i << " = " <<  getNormalisedError(lidsDistances, smallestE * i) * 100 << "%" << endl;
     }
     
     // vypis pro tabulku
