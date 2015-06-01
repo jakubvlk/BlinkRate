@@ -68,7 +68,9 @@ void testFaceDetection();
 void testEyeDetection();
 void testIrisDetection();
 void testLidsDetection();
+void testPupilsDetection();
 int facesDetectedCount = 0, eyesDetectedCount = 0;
+double methodTime = 0.;
 
 // default values
 #if XCODE
@@ -134,8 +136,9 @@ int main( int argc, const char** argv )
     //testDetection();
     //testFaceDetection();
     //testEyeDetection();
-    //testIrisDetection();
-    testLidsDetection();
+    testIrisDetection();
+    //testPupilsDetection();
+    //testLidsDetection();
     
 #else
 
@@ -339,7 +342,7 @@ void detectAndDisplay( Mat frame )
     	vector<Rect> eyes;
 
     	//-- In each face, detect eyes
-    	eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(23, 23) );   //20
+    	eyes_cascade.detectMultiScale( faceROI, eyes, 1.1, 2, 0 |CV_HAAR_SCALE_IMAGE, Size(20, 20) );   //20
 
 
     	eyes = pickEyeRegions(eyes, faceROI);
@@ -381,15 +384,15 @@ void detectAndDisplay( Mat frame )
             myHoughCircle(eyeWithoutReflection, 3, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
             //findPupil(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y, eyeCenter);
             
-            findEyeLidsOTSU(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
+            //findEyeLidsOTSU(eyeWithoutReflection, eyeName + numstr, 820 + 220 * j, 0, face.x + eyes[j].x, face.y + eyes[j].y);
         }
 
 		if (drawInFrame)
 		{
             //drawEyesCentres();
-            //drawPupils();
+            drawPupils();
             //drawIrises();
-            drawEyeLids();
+            //drawEyeLids();
  
 	    }
     }
@@ -1211,6 +1214,7 @@ Point findEyeCentre ( Mat eye, string windowName, int windowX, int windowY, int 
         
 #if TIME_MEASURING
         time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
+        //methodTime += time_time;
         cout << "find eye cenre time = " << time_time << endl;
 #endif
         
@@ -1220,6 +1224,7 @@ Point findEyeCentre ( Mat eye, string windowName, int windowX, int windowY, int 
 #if TIME_MEASURING
     time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
     cout << "find eye cenre time = " << time_time << endl;
+    //methodTime += time_time;
 #endif
     
     
@@ -1386,6 +1391,8 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
         eye = originalEye( Rect(fastWidth * 0.25, fastWidth * 0.6, originalEye.size().width - fastWidth * 0.25, originalEye.size().height - fastWidth * 0.6) );
     }
     
+    //showWindowAtPosition( windowName + "eye cutted", eye, windowX, windowY);
+    
     
     Mat gaussEye = eye;
     
@@ -1521,6 +1528,7 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
     Point centre;
     double max;
     minMaxLoc(sum, NULL, &max, NULL, &centre);
+    cout << "centre " << centre << endl;
     
     
 #if TIME_MEASURING
@@ -1546,14 +1554,16 @@ Point accurateEyeCentreLocalisationByMeansOfGradients(Mat eye, string windowName
         centre = uncut(centre, fastWidth);
     }
     
+    cout << "centre " << centre << endl;
+    
     Point frameCenter(centre.x + frameX, centre.y + frameY);
     eyesCentres.push_back(frameCenter);
     
-    
+    int a = 10;
     
     //showWindowAtPosition( windowName + " final eye", eye, windowX, windowY + 230);
     //showWindowAtPosition( windowName + " final", mat2gray(sum), windowX, windowY + 330);
-    
+    //methodTime += time_time;
     
     return centre;
 }
@@ -1819,6 +1829,7 @@ void FCD(Mat eye, string windowName, int windowX, int windowY, int frameX, int f
     
 }
 
+int tmpLids = 0;
 void findEyeLidsOTSU(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY)
 {
 #if TIME_MEASURING
@@ -1950,10 +1961,16 @@ void findEyeLidsOTSU(Mat eye, string windowName, int windowX, int windowY, int f
     time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
     cout << "find eye lids otsu time = " << time_time << endl;
 #endif
+    tmpLids++;
+
 }
 
 void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
 {
+#if TIME_MEASURING
+    int64 e1 = getTickCount();
+#endif
+    
     //showWindowAtPosition( windowName + " eye", eye, windowX, windowY + 0);
     
     Mat gaussEye;    
@@ -2041,6 +2058,13 @@ void findPupil(Mat eye, string windowName, int windowX, int windowY, int frameX,
     cvtColor(eye, eye, CV_GRAY2BGR);
     circle(eye, center, minIntensRad, CV_RGB(0, 255, 0));
     //showWindowAtPosition( windowName + " E pupil", eye, windowX, windowY + 360);
+    
+#if TIME_MEASURING
+    double time = (getTickCount() - e1)/ getTickFrequency();
+    cout << "find pupil time = " << time << endl;
+#endif
+    
+    //methodTime += time;
 }
 
 Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int windowY, int frameX, int frameY, Point center)
@@ -2068,7 +2092,7 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
         }
     }
     
-    //showWindowAtPosition( windowName + "intensiveEye eye hough", intensiveEye, windowX, windowY );
+    //showWindowAtPosition( windowName + "intensiveEye eye hough", intensiveEye, windowX - 450, windowY );
 
 	// Gradient
 	Mat grad_x, grad_y;
@@ -2091,7 +2115,7 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
 
     
     grad = mat2gray(abs_grad_x);
-    //showWindowAtPosition( windowName + "grad X", grad, windowX, windowY + 240);
+    //showWindowAtPosition( windowName + "grad X", grad, windowX - 450, windowY + 240);
 
     /*
      eye iris normalised error for 0.05 = 39.7959%
@@ -2102,7 +2126,8 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
      */
     
 	// polomery
-	int minRadius = 4, maxRadius = eye.size().width * 0.3	;
+    //cout << eye.size().width << endl;
+	int minRadius = lround(eye.size().width * 0.1), maxRadius = eye.size().width * 0.3	;
 
 	int gradientsCount = maxRadius - minRadius + 1;
 	double gradients[kernel][kernel][gradientsCount];
@@ -2267,6 +2292,8 @@ Point myHoughCircle(Mat eye, int kernel, string windowName, int windowX, int win
 //    Point frameCenter(newCenter.x + frameX, newCenter.y + frameY);
 //    eyesCentres.push_back(frameCenter);
     
+    
+    //methodTime += time;
     return newCenter;
 }
 
@@ -2658,6 +2685,9 @@ void testDetection()
     
     time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
     cout << "testDetection time = " << time_time << endl;
+    
+    cout << "method time = " << methodTime << endl;
+    cout << "avg method time = " << (methodTime / eyesDetectedCount) * 1000 << " ms" << endl;
 }
 
 
@@ -2805,6 +2835,67 @@ void testIrisDetection()
     
     time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
     cout << "testIrisDetection time = " << time_time << endl;
+    
+    cout << "method time = " << methodTime << endl;
+    cout << "avg method time = " << methodTime / eyesDetectedCount << endl;
+}
+
+void testPupilsDetection()
+{
+    double time_time;
+    int64 time_wholeFunc = getTickCount();
+    
+#if XCODE
+    string folder = "../../../res/pics/BioID-FaceDatabase-V1.2/";
+#else
+    string folder = "../res/pics/BioID-FaceDatabase-V1.2/";
+#endif
+    
+    string prefix = "BioID_";
+    string imgSuffix = ".pgm", dataSuffix = ".eye", myDataSuffix = ".myEye";
+    vector<double> irisesDistances;
+    
+    int fileCount = 1521;
+    
+    char numstr[21]; // enough to hold all numbers up to 64-bits
+    string imgFullFilePath = "", dataFullFilePath = "", myDataFullFilePath = "";
+    for (int i = 0; i < fileCount; i++)
+    {
+        vector<Point> dataEyeCentres;
+        
+        switch (digitsCount(i))
+        {
+            case 1:
+                sprintf(numstr, "000%d", static_cast<int>(i));
+                break;
+                
+            case 2:
+                sprintf(numstr, "00%d", static_cast<int>(i));
+                break;
+            case 3:
+                sprintf(numstr, "0%d", static_cast<int>(i));
+                break;
+            default:
+                sprintf(numstr, "%d", static_cast<int>(i));
+                break;
+        }
+        
+        
+        imgFullFilePath = folder + prefix + numstr + imgSuffix;
+        
+        
+        frame = imread(imgFullFilePath);
+        
+        originalFrame = frame.clone();
+        detectAndDisplay(frame);
+    }
+    
+    
+    
+    time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
+    
+    cout << "method time = " << methodTime << endl;
+    cout << "avg method time = " << methodTime / eyesDetectedCount * 1000<< " ms" << endl;
 }
 
 void computeLidsDistances(Point dataLeftEye, Point dataRigtEye, const vector<Vec4f> &myLids, const Vec6f eyeData, vector<double> &irisesDistances)
@@ -2822,6 +2913,8 @@ void computeLidsDistances(Point dataLeftEye, Point dataRigtEye, const vector<Vec
     irisesDistances.push_back(MAX(eru, erb) / distance);
 }
 
+
+
 void testLidsDetection()
 {
     double time_time;
@@ -2837,8 +2930,7 @@ void testLidsDetection()
     string imgSuffix = ".pgm", dataSuffix = ".eye", myDataSuffix = ".myEye";
     vector<double> lidsDistances;
     
-    int fileCount = 100;
-    int files[] = { 10, 16, 17, 27, 43, 50, 52, 58, 62, 64, 65, 66, 71, 73, 75, 77, 78, 82, 87, 101, 102, 104, 107, 110, 111, 128, 167, 175, 187, 188, 197, 212, 213, 218, 219, 220, 249, 265, 266, 267, 268, 280, 281, 284, 285, 286, 300, 305, 373, 420, 433, 444, 446, 482, 488, 513, 560, 574, 576, 577, 580, 581, 582, 585, 598, 604, 617, 630, 649, 662, 670, 672, 674, 675, 677, 685, 823, 827, 832, 854, 875, 880, 928, 943, 1080, 1093, 1095, 1096, 1153, 1157, 1160, 1175, 1177, 1209, 1227, 1237, 1245, 1264, 1289, 1290 };
+    int fileCount = 1521;
     
     char numstr[21]; // enough to hold all numbers up to 64-bits
     string imgFullFilePath = "", dataFullFilePath = "", myDataFullFilePath = "";
@@ -2846,20 +2938,20 @@ void testLidsDetection()
     {
         vector<Point> dataEyeCentres;
         
-        switch (digitsCount(files[i]))
+        switch (digitsCount(i))
         {
             case 1:
-                sprintf(numstr, "000%d", static_cast<int>(files[i]));
+                sprintf(numstr, "000%d", static_cast<int>(i));
                 break;
                 
             case 2:
-                sprintf(numstr, "00%d", static_cast<int>(files[i]));
+                sprintf(numstr, "00%d", static_cast<int>(i));
                 break;
             case 3:
-                sprintf(numstr, "0%d", static_cast<int>(files[i]));
+                sprintf(numstr, "0%d", static_cast<int>(i));
                 break;
             default:
-                sprintf(numstr, "%d", static_cast<int>(files[i]));
+                sprintf(numstr, "%d", static_cast<int>(i));
                 break;
         }
         
@@ -2872,39 +2964,14 @@ void testLidsDetection()
         originalFrame = frame.clone();
         detectAndDisplay(frame);
         
-        imgFullFilePath = folder + "results/" + prefix + numstr +"_result" + imgSuffix;
-        //imwrite(imgFullFilePath, frame);
-        
-        // test data
-        dataFullFilePath = folder + prefix + numstr + dataSuffix;
-        // read cords from file
-        readEyeData(dataFullFilePath, dataEyeCentres);
-        
-        myDataFullFilePath = folder + prefix + numstr + myDataSuffix;
-        Vec6f myEyeData = readMyEyeData(myDataFullFilePath);
-        
-        
-        if (eyeLids.size() == 4)
-        {
-            computeLidsDistances(dataEyeCentres[0], dataEyeCentres[1], eyeLids, myEyeData, lidsDistances);
-        }
         
     }
     
-    double smallestE = 0.05;
-    for (int i = 1; i <= 5; i++)
-    {
-        cout << "eye lids normalised error for " << smallestE * i << " = " <<  getNormalisedError(lidsDistances, smallestE * i) * 100 << "%" << endl;
-    }
-    
-    // vypis pro tabulku
-    smallestE = 0.01;
-    for (int i = 1; i <= 25; i++)
-    {
-        cout <<  getNormalisedError(lidsDistances, smallestE * i) * 100 << endl;
-    }
     
     
     time_time = (getTickCount() - time_wholeFunc)/ getTickFrequency();
     cout << "testLidsDetection time = " << time_time << endl;
+    
+    cout << "method time = " << methodTime << endl;
+    cout << "avg method time = " << methodTime / eyesDetectedCount * 1000 << " ms" << endl;
 }
